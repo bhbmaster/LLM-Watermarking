@@ -289,6 +289,18 @@ would collapse to noise.
 
 Comments sit next to the code they describe. Hover help in the UI repeats the same terms.
 
+### Going one level deeper
+
+This section says *where* the code is. [LEARNING.md](LEARNING.md) says *what the pieces
+are*: a tour of every platform feature the app uses - ES modules and Vite, the React hooks
+and why each one is the right tool, Web Workers and structured clone, `localStorage` versus
+the Cache Storage API, the hardware-detection APIs and why they are all deliberately vague,
+typed arrays and `BigInt`, the hashing and sampling maths, CSS Grid and stacking contexts,
+and the ARIA used to make it all reachable.
+
+It is written to be read top to bottom, in the order the app itself meets each feature,
+and it ends with an index from feature to file.
+
 ## Suggested experiments
 
 1. Mode None, then Detect. `z` near 0 (nothing was embedded).
