@@ -1,11 +1,10 @@
 /**
  * Model chooser: what this machine can run, what is already downloaded, and actions to
- * download / delete / select. Opens as a modal from the left panel.
+ * download, delete, or select. Opens as a modal from the left panel.
  *
- * The fit badges come from `models/hardware.ts`; hover a badge to see the reasoning.
- * "Too big" models are hidden by default so the list is a shortlist for *this* device,
- * but nothing is enforced: the browser's memory estimates are coarse, so power users can
- * reveal everything and try.
+ * Fit badges come from `models/hardware.ts`. Hover a badge to see the reasoning.
+ * "Too big" models are hidden by default so the list is a shortlist for this device.
+ * Nothing is enforced. Browser memory estimates are coarse. You can reveal everything and try.
  */
 
 import { useMemo, useState } from 'react';
@@ -23,7 +22,7 @@ export interface ModelPickerProps {
   cached: CachedModel[];
   /** The model the left panel currently points at. */
   selectedId: string;
-  /** The model actually resident in the worker (its cache entry can't be deleted). */
+  /** The model actually resident in the worker (its cache entry cannot be deleted). */
   loadedId: string | null;
   /** True while loading/generating: downloads and deletes are disabled. */
   busy: boolean;
@@ -47,7 +46,7 @@ export function ModelPicker(p: ModelPickerProps) {
   const [showAll, setShowAll] = useState(false);
   const cachedById = useMemo(() => new Map(p.cached.map((c) => [c.id, c])), [p.cached]);
 
-  // Join catalog × hardware × cache into one row per model. Memoised because assessFit
+  // Join catalog, hardware, and cache into one row per model. Memoised because assessFit
   // is called for every model and the picker re-renders on each hover.
   const rows = useMemo(() => {
     if (!p.hardware) return [];
@@ -63,8 +62,7 @@ export function ModelPicker(p: ModelPickerProps) {
   const hidden = rows.length - visible.length;
 
   return (
-    // Clicking the dimmed backdrop closes; clicks inside the dialog are stopped from
-    // bubbling so they don't.
+    // Clicking the dimmed backdrop closes. Clicks inside the dialog do not bubble.
     <div className="modal-backdrop" onClick={p.onClose}>
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="picker-title" onClick={(e) => e.stopPropagation()}>
         <header className="modal-header">
@@ -99,8 +97,8 @@ export function ModelPicker(p: ModelPickerProps) {
         </ul>
 
         <p className="muted small">
-          Quality is MMLU 5-shot accuracy from the model card (25 = chance, ~70 = GPT-3.5 class). Sizes are the actual downloads;
-          "needs" is a conservative estimate of peak memory. Weights land in this browser's Cache Storage and stay until you delete
+          Quality is MMLU 5-shot accuracy from the model card (25 = chance, about 70 = GPT-3.5 class). Sizes are the actual downloads.
+          "Needs" is a conservative estimate of peak memory. Weights land in this browser's Cache Storage. They stay until you delete
           them or clear site data.
         </p>
       </div>
@@ -110,11 +108,11 @@ export function ModelPicker(p: ModelPickerProps) {
 
 /**
  * One model. Left: name, badges, blurb, sizes. Right: actions.
- *   Select    — make it current (always available; the download happens on Generate)
- *   Download  — fetch + warm up now (only when not cached)
- *   Delete    — evict from Cache Storage (only when cached and not the loaded model:
- *               the worker still holds those buffers, and Transformers.js would simply
- *               re-download on the next load anyway)
+ *   Select    - make it current (always available; the download happens on Generate)
+ *   Download  - fetch and warm up now (only when not cached)
+ *   Delete    - evict from Cache Storage (only when cached and not the loaded model)
+ *               The worker still holds those buffers. Transformers.js would
+ *               re-download on the next load anyway.
  */
 function ModelRow(props: {
   spec: ModelSpec;
@@ -145,7 +143,7 @@ function ModelRow(props: {
         {/* Quality + recency: MMLU as stars and a number, plus the release date. */}
         <div className="small row model-meta">
           <Stars n={qualityStars(spec.mmlu.score)} title={`Quality ${qualityStars(spec.mmlu.score)}/5 from MMLU`} />
-          <span className="mono muted" title="MMLU, 5-shot accuracy (%). 25 = random guessing, ~70 = GPT-3.5 class, 85+ = frontier.">
+          <span className="mono muted" title="MMLU, 5-shot accuracy (%). 25 = random guessing, about 70 = GPT-3.5 class, 85+ = frontier.">
             MMLU {spec.mmlu.approx ? '≈' : ''}
             {spec.mmlu.score}
           </span>
@@ -196,7 +194,7 @@ function HardwareSummary({ hw }: { hw: HardwareProfile }) {
   return (
     <div className="hw">
       <div className="hw-title">
-        This machine <Help text="Detected through browser APIs, which hide most details on purpose. RAM is capped at '8+' by Chromium and unavailable in Safari/Firefox; GPU memory is never exposed, so fit is estimated from RAM (shared with the GPU on most laptops)." />
+        This machine <Help text="Detected through browser APIs, which hide most details on purpose. RAM is capped at '8+' by Chromium and unavailable in Safari and Firefox. GPU memory is never exposed, so fit is estimated from RAM (shared with the GPU on most laptops)." />
       </div>
       <dl className="hw-grid">
         <dt>Compute</dt>
@@ -217,7 +215,7 @@ function HardwareSummary({ hw }: { hw: HardwareProfile }) {
         <dd className="hw-location">
           <span>
             {loc.browser}'s <strong>Cache Storage</strong>, cache <code>transformers-cache</code>, one entry per file keyed by its Hugging Face URL. Managed by the
-            browser — not in this project folder, and not loadable as plain <code>.onnx</code> files.
+            browser. Not in this project folder. Not loadable as plain <code>.onnx</code> files.
             <Help text="Inspect it in DevTools → Application → Cache Storage → transformers-cache. Delete models from this dialog, or with 'Clear site data'. Storage is per browser and per origin (host + port), so another browser or host re-downloads." />
           </span>
           {loc.path && <code className="hw-path">{loc.path}</code>}
@@ -226,7 +224,7 @@ function HardwareSummary({ hw }: { hw: HardwareProfile }) {
         <dd>
           {[hw.platform, hw.cores ? `${hw.cores} cores` : null, hw.isMobile ? 'mobile' : null, hw.maxBufferGB ? `max GPU buffer ${hw.maxBufferGB} GB` : null]
             .filter(Boolean)
-            .join(' · ') || '—'}
+            .join(' · ') || '-'}
         </dd>
       </dl>
     </div>

@@ -1,5 +1,5 @@
 /**
- * `WatermarkLogitsProcessor` — where the watermark meets Transformers.js.
+ * `WatermarkLogitsProcessor` - where the watermark meets Transformers.js.
  *
  * Transformers.js is the library that runs the language model in the browser.
  * `model.generate()` is its write loop. Each round it:
@@ -12,8 +12,8 @@
  * Built-in processors (for example repetition penalty) run first. Ours runs last.
  *
  * A LogitsProcessor is only allowed to change scores. It cannot say "pick token 4711."
- * We still need to pick the token ourselves: Transformers.js has no top-k/top-p, and
- * tournament watermarking must sample, not only re-weight. So this class:
+ * We still need to pick the token ourselves. Transformers.js has no top-k/top-p.
+ * Tournament watermarking must sample, not only re-weight. So this class:
  *
  *   1. runs the full watermark + sampling pipeline inside `_call` and chooses a token;
  *   2. writes -Infinity on every logit except 0 at the chosen token;

@@ -4,8 +4,8 @@
  *   Generate:  prompt + settings → worker (model + watermark) → token stream
  *   Detect:    output text → tokenize → detect() on this thread → colour the tokens
  *
- * State lives here, not in the three panels, because the detector must use the same
- * γ / h / mode / depth as the generator, and the output panel needs both the write
+ * State lives here, not in the three panels. The detector must use the same
+ * γ / h / mode / depth as the generator. The output panel needs both the write
  * traces and the detect scores.
  *
  * If you do not know the terms yet, start at `src/main.tsx`.
@@ -39,7 +39,7 @@ function usePersistent<T>(key: string, initial: T) {
       if (raw === null) return initial;
       const parsed = JSON.parse(raw) as T;
       // For settings objects, merge over the defaults so newly added fields get a value
-      // even if an older version of the app stored the object. Primitives are used as-is.
+      // even if an older version of the app stored the object. Use primitives as they are.
       const isPlainObject = (v: unknown): v is object => typeof v === 'object' && v !== null && !Array.isArray(v);
       return isPlainObject(initial) && isPlainObject(parsed) ? { ...initial, ...parsed } : parsed;
     } catch {
@@ -56,8 +56,8 @@ export default function App() {
   const llm = useLLM();
 
   // ── Hardware & downloaded models ──
-  // Detected once at startup; drives which models are offered, which quantisation is
-  // loaded and the default model for a first-time visitor.
+  // Detected once at startup. Drives which models are offered, which quantisation is
+  // loaded, and the default model for a first-time visitor.
   const [hardware, setHardware] = useState<HardwareProfile | null>(null);
   const [cached, setCached] = useState<CachedModel[]>([]);
   const refreshCache = useCallback(() => listCachedModels().then(setCached).catch(() => {}), []);
@@ -66,12 +66,12 @@ export default function App() {
     void refreshCache();
   }, [refreshCache]);
 
-  // WebGPU is required for usable speed; WASM is only a fallback so the app still runs.
+  // WebGPU is required for usable speed. WASM is only a fallback so the app still runs.
   const webgpuAvailable = hardware ? hardware.webgpu : typeof navigator !== 'undefined' && 'gpu' in navigator;
   const device: Device = webgpuAvailable ? 'webgpu' : 'wasm';
 
   // ── Settings ──
-  // '' means "never chosen": use the hardware-based recommendation once we have a profile.
+  // Empty string means "never chosen". Use the hardware-based recommendation once we have a profile.
   const [storedModelId, setModelId] = usePersistent('modelId', '');
   const modelId = useMemo(() => {
     if (storedModelId && findModel(storedModelId)) return storedModelId;
@@ -185,8 +185,8 @@ export default function App() {
     setDetecting(true);
     try {
       // 1. Get the token sequence to score.
-      //    Realistic: re-tokenise the (possibly edited) text — the detector only has text.
-      //    Oracle:    use the exact ids the model emitted (only possible for unedited output).
+      //    Realistic: re-tokenise the (possibly edited) text. The detector only has text.
+      //    Oracle: use the exact ids the model emitted. Only possible for unedited output.
       let ids: number[];
       let pieces: string[];
       if (retokenize || !canUseGeneratedTokens) {
@@ -197,9 +197,9 @@ export default function App() {
       }
       // 2. Pure-function scoring with the *detector's* key and the shared scheme params.
       const r = detect(ids, { key: detectorKey, params: watermark, ignoreRepeats });
-      // 3. Re-attach generation traces when the ids match what we generated. Re-tokenised
-      //    text often does NOT round-trip exactly (merged/split pieces), in which case the
-      //    traces are dropped — and the mismatched positions show up as spurious red tokens.
+      // 3. Re-attach generation traces when the ids match what we generated.
+      //    Re-tokenised text often does not round-trip exactly (merged or split pieces).
+      //    Then the traces are dropped. Mismatched positions show up as spurious red tokens.
       const same = ids.length === generated.length && ids.every((id, i) => id === generated[i].id);
       setTokens(
         ids.map((id, i) => ({
@@ -217,7 +217,7 @@ export default function App() {
     }
   }, [llm, text, detectorKey, watermark, ignoreRepeats, generated, retokenize, canUseGeneratedTokens]);
 
-  // Leaving edit mode: refresh the chips from the edited text (scores are stale → cleared).
+  // Leaving edit mode: refresh the chips from the edited text. Scores are stale. Clear them.
   const handleToggleEdit = useCallback(async () => {
     if (!editing) {
       setEditing(true);
@@ -236,10 +236,10 @@ export default function App() {
   }, [editing, llm, text]);
 
   const busy = llm.status === 'loading' || llm.status === 'generating';
-  // Why the Detect button is disabled, shown under it. undefined ⇒ enabled.
-  // (Detection needs the tokenizer, hence "load a model first" even for pasted text.)
+  // Why the Detect button is disabled, shown under it. undefined means enabled.
+  // Detection needs the tokenizer. Load a model first even for pasted text.
   const detectDisabledReason = useMemo(() => {
-    if (!llm.loaded) return 'Load a model first — the detector needs its tokenizer.';
+    if (!llm.loaded) return 'Load a model first. The detector needs its tokenizer.';
     if (!text.trim()) return 'Generate or paste some text to analyse.';
     if (busy) return 'Wait for generation to finish.';
     return undefined;
@@ -252,8 +252,8 @@ export default function App() {
           LLM <span className="gradient">Watermarking</span> Playground
         </h1>
         <p className="muted">
-          Runs entirely in your browser. Generate text with a red/green-list or tournament watermark, then try to detect it — with the right
-          key, the wrong key, or after editing the text.
+          Runs entirely in your browser. Generate text with a red/green-list or tournament watermark, then try to detect it. Use the right
+          key, the wrong key, or text after edits.
         </p>
       </header>
 

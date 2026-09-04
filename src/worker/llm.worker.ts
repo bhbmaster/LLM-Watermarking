@@ -49,8 +49,8 @@ const post = (msg: FromWorker) => self.postMessage(msg);
 
 // ──────────────────────────────────────── message loop ───────────────────────────────────────
 
-// Every request is handled here; any exception becomes a protocol-level `error` message
-// (with the requestId when the request had one, so the right promise is rejected).
+// Every request is handled here. Any exception becomes a protocol-level `error` message.
+// With the requestId when the request had one, the right promise is rejected.
 self.onmessage = async (e: MessageEvent<ToWorker>) => {
   const msg = e.data;
   try {
@@ -118,7 +118,7 @@ async function load(target: LoadTarget): Promise<void> {
   post({ type: 'progress', progress: { percent: 0, text: 'Loading model…' } });
   try {
     model = await AutoModelForCausalLM.from_pretrained(modelId, {
-      // q4f16 = 4-bit weights with fp16 activations: the smallest download and the fastest
+      // q4f16 = 4-bit weights with fp16 activations. Smallest download. Fastest
       // on WebGPU with fp16 shaders. q4 (fp32 activations) is the fallback chosen by the UI
       // for GPUs without fp16 and for the WASM/CPU path.
       dtype,
@@ -128,11 +128,11 @@ async function load(target: LoadTarget): Promise<void> {
 
     post({ type: 'progress', progress: { percent: 100, text: 'Compiling shaders / warming up…' } });
     // First run of a WebGPU model compiles all shaders (can take a few seconds). Do a
-    // 1-token dummy generation now so the user's first real request is fast.
+    // 1-token dummy generation now. The user's first real request is then fast.
     const warm = tokenizer('hi', { return_tensor: true });
     await model.generate({ ...warm, max_new_tokens: 1, do_sample: false });
   } catch (err) {
-    // A failed load (out of GPU memory, network error…) must not leave a half-built model.
+    // A failed load (out of GPU memory, network error) must not leave a half-built model.
     await model?.dispose().catch(() => {});
     model = null;
     throw err;
@@ -147,9 +147,9 @@ async function load(target: LoadTarget): Promise<void> {
 // ────────────────────────────────────────── generation ───────────────────────────────────────
 
 /**
- * One generation run. The interesting part is that *our* processor does the sampling
- * (so it can apply the watermark) and Transformers.js's loop is reduced to a driver that
- * runs the forward pass, hands us the logits, and appends whichever token we return.
+ * One generation run. Our processor does the sampling so it can apply the watermark.
+ * The Transformers.js loop is a driver. It runs the forward pass, hands us the logits,
+ * and appends whichever token we return.
  */
 async function generate(req: Extract<ToWorker, { type: 'generate' }>): Promise<void> {
   if (!model || !tokenizer) throw new Error('Model not loaded yet.');
@@ -161,11 +161,11 @@ async function generate(req: Extract<ToWorker, { type: 'generate' }>): Promise<v
   const tok = tokenizer;
 
   // ── Prompt → input ids ──
-  // Instruction mode wraps the prompt in the chat template ("<|im_start|>user … <|im_start|>assistant").
-  // `enable_thinking: false` makes Qwen3 skip its <think>…</think> reasoning block so the
-  // visible output is the answer itself. Continuation mode feeds the raw text.
-  // (The type definitions don't list template-specific kwargs such as `enable_thinking`,
-  // but `apply_chat_template` forwards any extra option to the Jinja template.)
+  // Instruction mode wraps the prompt in the chat template.
+  // `enable_thinking: false` makes Qwen3 skip its <think>...</think> reasoning block.
+  // The visible output is then the answer itself. Continuation mode feeds the raw text.
+  // Type definitions do not list template-specific kwargs such as `enable_thinking`.
+  // `apply_chat_template` still forwards any extra option to the Jinja template.
   const templateOptions = {
     add_generation_prompt: true,
     return_dict: true as const,
@@ -193,7 +193,7 @@ async function generate(req: Extract<ToWorker, { type: 'generate' }>): Promise<v
     forcedRed,
     onStep: (trace) => {
       // The processor already chose the token; stream it out right away.
-      if (eosSet.has(trace.tokenId)) return; // don't display <|im_end|> etc.
+      if (eosSet.has(trace.tokenId)) return; // do not display <|im_end|> and similar
       generated.push(trace.tokenId);
       post({
         type: 'token',
@@ -212,11 +212,11 @@ async function generate(req: Extract<ToWorker, { type: 'generate' }>): Promise<v
     await model.generate({
       ...inputs,
       max_new_tokens: generation.maxNewTokens,
-      // Greedy on purpose: our processor collapses the logits onto the token *it* sampled,
-      // so argmax == our choice. See WatermarkLogitsProcessor for why.
+      // Greedy on purpose: our processor collapses the logits onto the token it sampled.
+      // Then argmax equals our choice. See WatermarkLogitsProcessor for why.
       do_sample: false,
-      // Built-in processors run *before* ours, so repetition penalty is applied to the raw
-      // logits and the watermark sees the penalised version — same order as HF Python.
+      // Built-in processors run before ours. Repetition penalty is applied to the raw
+      // logits. The watermark sees the penalised version. Same order as HF Python.
       repetition_penalty: generation.repetitionPenalty,
       logits_processor: processors,
       stopping_criteria: stopper,
@@ -241,8 +241,8 @@ async function generate(req: Extract<ToWorker, { type: 'generate' }>): Promise<v
 /** Tokenise text for the detector and return both ids and per-token display pieces. */
 function tokenize(requestId: number, text: string): void {
   if (!tokenizer) throw new Error('Model not loaded yet.');
-  // No special tokens: the detector should see exactly what a third party would get by
-  // tokenising the text they were handed.
+  // No special tokens: the detector should see exactly what a third party would get
+  // by tokenising the text they were handed.
   const ids = tokenizer.encode(text, { add_special_tokens: false });
   const pieces = ids.map((id) => tokenizer!.decode([id], { skip_special_tokens: false }));
   post({ type: 'tokenized', requestId, ids, pieces });
@@ -259,10 +259,10 @@ function normalizeIds(x: unknown): number[] {
 
 /**
  * A word can tokenise differently depending on capitalisation and whether it follows a
- * space (BPE vocabularies have separate " Paris" and "Paris" tokens). We red-list the
- * tokens of every common surface form so the word is effectively suppressed. Multi-token
- * words have *all* their pieces red-listed, which also suppresses other words sharing a
- * piece — a limitation worth noticing when you experiment.
+ * space. BPE vocabularies have separate " Paris" and "Paris" tokens. We red-list the
+ * tokens of every common surface form so the word is suppressed. Multi-token
+ * words have all their pieces red-listed. That also suppresses other words sharing a
+ * piece. Notice that limitation when you experiment.
  */
 function buildForcedRedMask(tok: PreTrainedTokenizer, words: string[], vocabSize: number): Uint8Array | null {
   if (words.length === 0) return null;

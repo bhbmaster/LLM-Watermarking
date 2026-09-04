@@ -6,10 +6,10 @@
  * a WebGPU out-of-memory error can kill the tab.
  *
  * Signals:
- *  • WebGPU adapter — if missing, only tiny models on CPU/WASM make sense
- *  • shader-f16     — if present, use the smaller q4f16 weights
- *  • deviceMemory   — Chromium only; the value 8 means "8 GB or more"
- *  • storage.estimate — hard cap: the download must fit in the browser quota
+ *  • WebGPU adapter - if missing, only tiny models on CPU/WASM make sense
+ *  • shader-f16     - if present, use the smaller q4f16 weights
+ *  • deviceMemory   - Chromium only; the value 8 means "8 GB or more"
+ *  • storage.estimate - hard cap: the download must fit in the browser quota
  *
  * GPU memory itself is never reported. On laptops, RAM is shared with the GPU, so
  * RAM is the proxy. See the glossary in `src/main.tsx` for WebGPU / WASM / ONNX.
@@ -19,7 +19,7 @@ import { CATALOG, estimateMemoryGB, type Dtype, type ModelSpec } from './catalog
 
 export interface HardwareProfile {
   webgpu: boolean;
-  /** Best available GPU name, e.g. "Apple M2 Pro" or "apple / metal-3" — may be null. */
+  /** Best available GPU name, for example "Apple M2 Pro" or "apple / metal-3" - may be null. */
   gpuName: string | null;
   shaderF16: boolean;
   maxBufferGB: number | null;
@@ -35,7 +35,7 @@ export interface HardwareProfile {
   isMobile: boolean;
 }
 
-/** Chromium-only navigator extensions that TypeScript's DOM lib doesn't declare. */
+/** Chromium-only navigator extensions that TypeScript's DOM lib does not declare. */
 interface NavigatorExtras {
   deviceMemory?: number;
   userAgentData?: { platform?: string; mobile?: boolean };
@@ -96,8 +96,8 @@ export async function detectHardware(): Promise<HardwareProfile> {
     maxBufferGB,
     maxStorageBindingGB,
     deviceMemoryGB,
-    // Chromium clamps the report to the range [0.25, 8]; exactly 8 therefore means "8 or
-    // more". Some embedders (e.g. Electron) report the true value, which we take at face value.
+    // Chromium clamps the report to the range [0.25, 8]. Exactly 8 therefore means "8 or
+    // more". Some embedders (for example Electron) report the true value. We take that at face value.
     deviceMemoryCapped: deviceMemoryGB === 8,
     cores,
     storageQuotaGB,
@@ -112,9 +112,9 @@ export async function detectHardware(): Promise<HardwareProfile> {
 export type FitLevel =
   /** Comfortably within what we can see of this machine. */
   | 'fits'
-  /** Probably works, but close to the limit or depends on RAM we can't observe. */
+  /** Probably works, but close to the limit or depends on RAM we cannot observe. */
   | 'tight'
-  /** We simply can't tell (e.g. large model on a machine reporting "8 GB or more"). */
+  /** We simply cannot tell (for example large model on a machine reporting "8 GB or more"). */
   | 'unknown'
   /** Exceeds a limit we can observe (storage quota, small RAM, no GPU). */
   | 'too-big';
@@ -131,7 +131,7 @@ export interface FitAssessment {
 
 /**
  * q4f16 is the default for WebGPU with fp16 shaders. Without fp16 (old GPUs, WASM) fall
- * back to q4 when the repo publishes it; otherwise q4f16 is still attempted — ORT can
+ * back to q4 when the repo publishes it. Otherwise q4f16 is still attempted. ORT can
  * emulate fp16 on fp32 hardware, just slower.
  */
 export function pickDtype(spec: ModelSpec, hw: HardwareProfile): Dtype {
@@ -155,7 +155,7 @@ export function assessFit(spec: ModelSpec, hw: HardwareProfile): FitAssessment {
     }
   }
 
-  // 2. No GPU: CPU/WASM. 32-bit WASM tops out at 4 GB and is slow; only tiny models are sane.
+  // 2. No GPU: CPU/WASM. 32-bit WASM tops out at 4 GB and is slow. Only tiny models are sane.
   if (!hw.webgpu) {
     reasons.push('No WebGPU: runs on the CPU via WebAssembly (very slow, 4 GB address space).');
     if (needGB <= 1.2) return { level: 'tight', dtype, downloadGB, needGB, reasons: [...reasons, 'Small enough to try on CPU.'] };
@@ -181,8 +181,8 @@ export function assessFit(spec: ModelSpec, hw: HardwareProfile): FitAssessment {
   }
 
   if (hw.deviceMemoryCapped) {
-    // "8 GB or more": anything up to ~5 GB is safe on an 8 GB machine; beyond that it
-    // depends on RAM the browser won't tell us about.
+    // "8 GB or more": anything up to about 5 GB is safe on an 8 GB machine. Beyond that it
+    // depends on RAM the browser will not tell us about.
     reasons.push(`Machine reports "8 GB or more" RAM; model needs ~${needGB} GB.`);
     if (needGB <= 5) return { level: 'fits', dtype, downloadGB, needGB, reasons };
     if (needGB <= 9) return { level: 'tight', dtype, downloadGB, needGB, reasons: [...reasons, 'Fine with 16 GB+; may fail on an 8 GB machine.'] };
@@ -196,8 +196,8 @@ export function assessFit(spec: ModelSpec, hw: HardwareProfile): FitAssessment {
 }
 
 /**
- * A sensible first model for this machine: the largest one that clearly fits, capped at a
- * ~1.5 GB download so the first click doesn't pull multiple gigabytes. Falls back to the
+ * A sensible first model for this machine: the largest one that clearly fits, capped at
+ * about 1.5 GB download so the first click does not pull multiple gigabytes. Falls back to the
  * smallest model in the catalog.
  */
 export function recommendModel(hw: HardwareProfile): ModelSpec {

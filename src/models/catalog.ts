@@ -10,11 +10,11 @@
  * That size is what lands in the browser cache and what `hardware.ts` uses for fit.
  *
  * Two quantisations (compressed copies of the same model):
- *  - `q4f16`  4-bit weights, fp16 math — smallest and fastest on WebGPU with fp16
- *  - `q4`     4-bit weights, fp32 math — larger; use when the GPU has no fp16
+ *  - `q4f16`  4-bit weights, fp16 math. Smallest and fastest on WebGPU with fp16.
+ *  - `q4`     4-bit weights, fp32 math. Larger. Use when the GPU has no fp16.
  *
- * Instruction-tuned models have a chat template, so "Instruction" mode wraps your
- * prompt as a user message. Qwen3 also accepts `enable_thinking: false`; others ignore it.
+ * Instruction-tuned models have a chat template. "Instruction" mode wraps your
+ * prompt as a user message. Qwen3 also accepts `enable_thinking: false`. Others ignore it.
  *
  * `mmlu` is a published quiz score (higher is stronger). `released` is the weight date.
  */
@@ -22,11 +22,11 @@
 export type Dtype = 'q4f16' | 'q4';
 
 export interface ModelSpec {
-  /** Hugging Face repo id, e.g. "onnx-community/Qwen3-0.6B-ONNX". */
+  /** Hugging Face repo id, for example "onnx-community/Qwen3-0.6B-ONNX". */
   id: string;
   /** Short display name. */
   name: string;
-  /** Parameter count for display, e.g. "0.6B". */
+  /** Parameter count for display, for example "0.6B". */
   params: string;
   /** Download size in GB for each available dtype (undefined = not published). */
   sizeGB: Partial<Record<Dtype, number>>;
@@ -36,15 +36,15 @@ export interface ModelSpec {
   released: string;
   /**
    * MMLU score (5-shot, %) as a single "how good is it" number, taken from the model's
-   * card / technical report. 25 is random guessing, ~70 is GPT-3.5 class, ~85+ frontier.
+   * card / technical report. 25 is random guessing. About 70 is GPT-3.5 class. About 85+ is frontier.
    * Where the publisher reports only the base model or a close variant, the figure is
-   * marked approximate. Small models are all weak on MMLU; the score is for comparing
-   * *between* rows, not a promise about answer quality on your prompt.
+   * marked approximate. Small models are all weak on MMLU. The score is for comparing
+   * between rows. It is not a promise about answer quality on your prompt.
    */
   mmlu: { score: number; approx?: boolean };
 }
 
-/** 1–5 star rating derived from MMLU so quality can be read at a glance. */
+/** 1-5 star rating derived from MMLU so quality can be read at a glance. */
 export function qualityStars(mmlu: number): number {
   if (mmlu >= 80) return 5;
   if (mmlu >= 65) return 4;
@@ -247,14 +247,14 @@ export function findModel(id: string): ModelSpec | undefined {
 }
 
 /**
- * Rough peak memory needed to *run* a model, in GB, for a given dtype.
+ * Rough peak memory needed to run a model, in GB, for a given dtype.
  *
- * Weights are loaded into GPU buffers (≈ download size), plus:
+ * Weights are loaded into GPU buffers (about download size), plus:
  *  - runtime overhead: shader pipelines, workspace buffers, the logits vector
- *    (vocab × fp32 per step — 0.6 MB for Qwen's 152k vocab, negligible),
+ *    (vocab x fp32 per step - 0.6 MB for Qwen's 152k vocab, negligible),
  *  - KV cache: small for the short generations this playground does,
- *  - a copy of the weights may transiently exist in CPU memory while the session is created.
- * 1.3× + 0.4 GB is a deliberately conservative envelope; treat it as "you want at least
+ *  - a copy of the weights may exist in CPU memory while the session is created.
+ * 1.3x + 0.4 GB is a conservative envelope. Treat it as "you want at least
  * this much free", not as an exact figure.
  */
 export function estimateMemoryGB(spec: ModelSpec, dtype: Dtype): number {

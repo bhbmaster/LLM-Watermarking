@@ -15,9 +15,9 @@
 /**
  * Which watermarking scheme is applied while sampling each token.
  *
- * - `none`        Plain sampling. Useful as a control: detection should report z ≈ 0.
+ * - `none`        Plain sampling. Useful as a control: detection should report z near 0.
  * - `hard`        Kirchenbauer et al. (2023) "hard red list": red-list tokens are
- *                 forbidden outright (logit → -∞). Very detectable, but can hurt
+ *                 forbidden outright (logit -> -Infinity). Very detectable, but can hurt
  *                 quality when the only sensible next token is red.
  * - `soft`        Kirchenbauer et al. "soft red list": green-list logits get +δ.
  *                 Low-entropy positions (one obvious next token) are left almost
@@ -31,23 +31,24 @@ export type WatermarkMode = 'none' | 'hard' | 'soft' | 'tournament';
 export interface WatermarkParams {
   mode: WatermarkMode;
   /**
-   * γ — fraction of the vocabulary placed on the green list at each step.
+   * γ - fraction of the vocabulary placed on the green list at each step.
    * Only used by `hard` and `soft`. Default 0.5 in the paper; 0.25 is also common.
    */
   gamma: number;
   /**
-   * δ — logit bias added to green-list tokens (soft mode only). Larger δ means a
-   * stronger, more detectable watermark at the cost of more distortion. 2–4 is typical.
+   * δ - logit bias added to green-list tokens (soft mode only). Larger δ means a
+   * stronger, more detectable watermark at the cost of more distortion. 2-4 is typical.
    */
   delta: number;
   /**
-   * h — how many *previous* tokens are hashed together with the key to seed the
-   * green list (or the tournament g-functions) for the current position.
+   * h - how many previous tokens are hashed with the key.
+   * That hash seeds the green list, or the tournament g-functions, for this position.
    *
-   * h=1 is the original paper's scheme (robust to edits, but repeated bigrams leak
-   * structure). Larger h gives more "random-looking" lists but makes detection more
-   * fragile: a single edited token corrupts h subsequent scores.
-   * SynthID-Text uses h=4 by default (their "ngram_len=5" ⇒ 4 context tokens).
+   * h=1 is the original Kirchenbauer scheme. It is more robust to edits.
+   * Repeated bigrams can leak structure.
+   * Larger h makes the lists look more random.
+   * Detection is then more fragile: one edited token corrupts h later scores.
+   * SynthID-Text uses h=4 by default (`ngram_len=5` means 4 context tokens).
    */
   h: number;
   /** Secret key. Anyone holding the key can detect; without it the text looks normal. */
@@ -71,12 +72,12 @@ export interface GenerationParams {
   temperature: number;
   /** Keep only the k most likely tokens (0 disables). Applied after temperature. */
   topK: number;
-  /** Nucleus sampling: keep the smallest set of tokens whose probability sums to ≥ p (1 disables). */
+  /** Nucleus sampling: keep the smallest set of tokens whose probability sums to >= p (1 disables). */
   topP: number;
   /** HF-style repetition penalty (1 disables). Applied by Transformers.js before our processor. */
   repetitionPenalty: number;
   /**
-   * Seed for the *sampling* RNG (not the watermark key!). Empty string = fresh
+   * Seed for the sampling RNG (not the watermark key). Empty string = fresh
    * randomness every run. Set it to reproduce a run exactly.
    */
   seed: string;
@@ -85,7 +86,7 @@ export interface GenerationParams {
 /**
  * How the prompt is fed to the model.
  * - `instruction`  Wrap the prompt in the model's chat template so it answers as an assistant.
- * - `continuation` Feed raw text; the model keeps writing where the text stops.
+ * - `continuation` Feed raw text. The model keeps writing where the text stops.
  */
 export type PromptMode = 'instruction' | 'continuation';
 

@@ -1,18 +1,18 @@
 /*
  * Single stylesheet for the playground. Plain CSS, no framework, organised top-down:
  *
- *   theme          — colour tokens; green/red are the watermark colours used everywhere
- *   layout         — header, three-column grid, panels
- *   text utilities — .muted / .small / .row helpers
- *   form controls  — fields, inputs, segmented control, collapsible, help tooltip, badges
- *   buttons        — primary (generate), stop, secondary, ghost
- *   status         — load status line + progress bar
- *   output         — the token chips (.tok.green / .tok.red / .graded / .unscored)
- *   model picker   — modal, hardware summary, model rows
- *   detection      — result card, stats table, rate bar
+ *   theme          - colour tokens; green/red are the watermark colours used everywhere
+ *   layout         - header, three-column grid, panels
+ *   text utilities - .muted / .small / .row helpers
+ *   form controls  - fields, inputs, segmented control, collapsible, help tooltip, badges
+ *   buttons        - primary (generate), stop, secondary, ghost
+ *   status         - load status line + progress bar
+ *   output         - the token chips (.tok.green / .tok.red / .graded / .unscored)
+ *   model picker   - modal, hardware summary, model rows
+ *   detection      - result card, stats table, rate bar
  *
- * Class names are referenced from the .tsx files; the chip colour classes in particular
- * are set in OutputPanel.tsx → chipStyle().
+ * Class names are referenced from the .tsx files. Chip colour classes
+ * are set in OutputPanel.tsx by chipStyle().
  */
 
 /* ─────────────────────────── theme ─────────────────────────── */
@@ -419,7 +419,7 @@ textarea {
   min-height: 360px;
 }
 
-/* Token chip container: monospace, generous line-height so chips don't collide, pre-wrap so
+/* Token chip container: monospace, generous line-height so chips do not collide, pre-wrap so
    spaces inside tokens are preserved (a leading space is part of most BPE tokens). */
 .output-tokens {
   font-family: var(--mono);
@@ -500,7 +500,7 @@ textarea {
 .ggrid .g0 {
   background: var(--red);
 }
-/* Unscored tokens (repeats / no context) get a faded grid so they don't compete. */
+/* Unscored tokens (repeats / no context) get a faded grid so they do not compete. */
 .ggrid.dim {
   opacity: 0.3;
 }

@@ -2,7 +2,7 @@
  * React hook that wraps the LLM Web Worker behind a promise-based API.
  *
  * The worker speaks in fire-and-forget messages (see `../worker/protocol.ts`). This
- * hook turns them back into something ergonomic for components:
+ * hook turns them back into something components can await:
  *
  *   const llm = useLLM();
  *   await llm.load(modelId, 'webgpu');                 // resolves on `ready`
@@ -74,7 +74,7 @@ export function useLLM() {
 
   // Create the worker once. Vite understands `new Worker(new URL(...), { type: 'module' })`
   // and bundles the worker file separately (see vite.config.ts `worker.format`).
-  // The effect's cleanup terminates it on unmount, which also frees GPU memory.
+  // The effect's cleanup terminates it on unmount. That also frees GPU memory.
   useEffect(() => {
     const worker = new Worker(new URL('../worker/llm.worker.ts', import.meta.url), { type: 'module' });
     workerRef.current = worker;
@@ -112,7 +112,7 @@ export function useLLM() {
         }
 
         case 'tokenized': {
-          // Reply to tokenize(); does not touch status (it's a quick side query).
+          // Reply to tokenize(); does not touch status (it is a quick side query).
           const p = pending.current.get(msg.requestId);
           pending.current.delete(msg.requestId);
           p?.resolve({ ids: msg.ids, pieces: msg.pieces });
@@ -126,7 +126,7 @@ export function useLLM() {
             const p = pending.current.get(msg.requestId);
             pending.current.delete(msg.requestId);
             p?.reject(err);
-            // A failed generate/tokenize doesn't unload the model.
+            // A failed generate/tokenize does not unload the model.
             setStatus((s) => (s === 'generating' ? 'ready' : s));
           } else {
             // Errors during load are fatal for that load attempt.
@@ -164,7 +164,7 @@ export function useLLM() {
     [send],
   );
 
-  /** Run one generation; tokens stream to `onToken`, the promise resolves with the whole text. */
+  /** Run one generation. Tokens stream to `onToken`. The promise resolves with the whole text. */
   const generate = useCallback(
     (args: GenerateArgs, handlers: { onToken?: (t: TokenEvent) => void } = {}) =>
       new Promise<GenerateResult>((resolve, reject) => {
@@ -181,7 +181,7 @@ export function useLLM() {
     [send],
   );
 
-  /** Interrupt the current generation; the pending generate() still resolves (stopped=true). */
+  /** Interrupt the current generation. The pending generate() still resolves (stopped=true). */
   const stop = useCallback(() => send({ type: 'stop' }), [send]);
 
   /** Tokenise arbitrary text with the loaded model's tokenizer (used by the detector). */

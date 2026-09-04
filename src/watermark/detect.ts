@@ -16,13 +16,13 @@
  * Then it runs a one-sided z-test against "no watermark was applied":
  *
  *   Green list: each scored token is green with chance γ, so
- *       z = (#green − γT) / sqrt(T·γ(1−γ))
+ *       z = (#green - γT) / sqrt(T·γ(1-γ))
  *
  *   Tournament: each g-value is a fair coin, so
- *       z = (mean − 0.5) · 2 · sqrt(T·m)
+ *       z = (mean - 0.5) · 2 · sqrt(T·m)
  *
- * Large z means "far more green / high-g tokens than chance allows." The papers treat
- * z ≥ 4 as a detection (one-sided p about 3e-5). The wrong key yields z near 0,
+ * Large z means far more green or high-g tokens than chance allows. The papers treat
+ * z >= 4 as a detection (one-sided p about 3e-5). The wrong key yields z near 0,
  * because the rebuilt lists do not match the ones used at write time.
  *
  * Two extra rules from the papers:
@@ -54,9 +54,9 @@ export interface TokenScore {
   /** Green-list scheme: 1 = green, 0 = red. Tournament: mean g-value in [0, 1]. */
   score: number;
   /**
-   * Tournament only: the individual g_ℓ(x_t) for ℓ = 0 … m−1 that `score` averages.
-   * The UI draws these as the m-cell grid above each token (green = 1, red = 0), which is
-   * the picture from the SynthID paper: a watermarked text has visibly more green cells.
+   * Tournament only: the individual g_ℓ(x_t) for ℓ = 0 .. m-1 that `score` averages.
+   * The UI draws these as the m-cell grid above each token (green = 1, red = 0).
+   * That is the picture from the SynthID paper. Watermarked text has more green cells.
    */
   gValues?: (0 | 1)[];
 }
@@ -72,13 +72,13 @@ export interface DetectionResult {
   /** Expected rate under H0: γ for the green list, 0.5 for the tournament. */
   expectedRate: number;
   zScore: number;
-  /** One-sided p-value P(Z ≥ z) under H0. */
+  /** One-sided p-value P(Z >= z) under H0. */
   pValue: number;
   perToken: TokenScore[];
   /**
    * Echo of the settings this result was computed with. The UI shows them next to the
-   * verdict ("green list, γ=0.5, h=4") so a result stays interpretable even after the
-   * user changes the sliders on the left.
+   * verdict ("green list, γ=0.5, h=4"). A result stays readable after the user
+   * changes the sliders on the left.
    */
   params: DetectionOptions['params'];
   ignoreRepeats: boolean;
@@ -91,8 +91,8 @@ export interface DetectionOptions {
 }
 
 /**
- * Score a token sequence. Pure function: same inputs ⇒ same result, so the UI can
- * re-run it instantly when the user edits the text or changes the key.
+ * Score a token sequence. Pure function: same inputs give the same result.
+ * The UI can re-run it at once when the user edits the text or changes the key.
  */
 export function detect(tokens: ArrayLike<number>, options: DetectionOptions): DetectionResult {
   const { key, params, ignoreRepeats } = options;
@@ -109,15 +109,15 @@ export function detect(tokens: ArrayLike<number>, options: DetectionOptions): De
     const tokenId = tokens[i];
     const seed = seedForPosition(keyHash, tokens, i, h);
 
-    // No complete context window ⇒ cannot recompute the list ⇒ unscored.
+    // No complete context window: cannot recompute the list. Leave unscored.
     if (seed === null) {
       perToken.push({ index: i, tokenId, scored: false, score: 0 });
       continue;
     }
 
     // The score depends only on (seed, token). Two positions with identical
-    // (previous h tokens, token) produce identical evidence — count it once.
-    // (Repeats are still *scored* for display, just excluded from the statistic.)
+    // (previous h tokens, token) produce identical evidence. Count it once.
+    // Repeats are still scored for display. They are excluded from the statistic.
     const { score, gValues } = scoreOf(scheme, seed, tokenId, params);
     if (ignoreRepeats) {
       const ngramKey = `${seed}:${tokenId}`;
@@ -167,7 +167,7 @@ export function detect(tokens: ArrayLike<number>, options: DetectionOptions): De
 /**
  * Per-position evidence.
  *   green list:  1 if the token is on this context's green list, else 0.
- *   tournament:  the m layer values g_ℓ(x_t) and their mean — the inner sum of
+ *   tournament:  the m layer values g_ℓ(x_t) and their mean - the inner sum of
  *                score = 1/(mT) · Σ_t Σ_ℓ g_ℓ(x_t) from the SynthID paper.
  */
 function scoreOf(
@@ -189,11 +189,11 @@ function scoreOf(
 }
 
 /**
- * P(Z ≥ z) for a standard normal, via the complementary error function:
- * 1 − Φ(z) = ½·erfc(z/√2). Uses the Chebyshev-fitted approximation from
- * Numerical Recipes (`erfcc`), accurate to a relative 1.2·10⁻⁷ everywhere — good
- * enough to print p-values like 3.2e-5 without the catastrophic cancellation that
- * `1 - Φ(z)` would suffer for large z.
+ * P(Z >= z) for a standard normal, via the complementary error function:
+ * 1 - Φ(z) = 1/2 · erfc(z/√2). Uses the Chebyshev-fitted approximation from
+ * Numerical Recipes (`erfcc`). Relative error is about 1.2e-7.
+ * That is enough to print p-values like 3.2e-5.
+ * Direct `1 - Φ(z)` would lose precision for large z.
  */
 export function oneSidedPValue(z: number): number {
   const x = z / Math.SQRT2;
@@ -218,8 +218,8 @@ export function oneSidedPValue(z: number): number {
 }
 
 /** The two decision thresholds used throughout the UI. */
-export const Z_DETECT = 4; // the papers' operating point: one-sided p ≈ 3·10⁻⁵
-export const Z_WEAK = 2; // p ≈ 0.023 — suggestive, not conclusive
+export const Z_DETECT = 4; // papers' operating point: one-sided p about 3e-5
+export const Z_WEAK = 2; // p about 0.023. Suggestive, not conclusive.
 
 export type VerdictLevel = 'strong' | 'weak' | 'none';
 
@@ -231,24 +231,25 @@ export function verdictFor(z: number): { label: string; level: VerdictLevel } {
 }
 
 /**
- * "Confidence" as shown in the UI: 1 − p, i.e. the probability that un-watermarked
- * text would NOT have scored this high. 98.3% means p = 0.017. This is a frequentist
- * statement about H0, not the posterior probability that the text is watermarked.
+ * "Confidence" in the UI is 1 - p.
+ * That is the chance that plain text would not score this high.
+ * 98.3% means p = 0.017.
+ * This is a statement about H0. It is not the probability that the text is watermarked.
  */
 export function confidenceFor(pValue: number): number {
   return Math.max(0, Math.min(1, 1 - pValue));
 }
 
-/** Short description of the test that was run, e.g. "green list (γ=0.5, h=4)". */
+/** Short description of the test that was run, for example "green list (γ=0.5, h=4)". */
 export function describeDetector(r: DetectionResult): string {
   const p = r.params;
   return r.scheme === 'greenlist' ? `green list (γ=${p.gamma}, h=${p.h})` : `tournament (m=${p.depth}, h=${p.h})`;
 }
 
 /**
- * One paragraph of context for the verdict, tailored to the result and to the scheme the
- * user has selected. Written for someone learning how the schemes behave, so it points
- * at the knob that would change the outcome.
+ * One paragraph of context for the verdict, matched to the result and the scheme.
+ * Written for a reader who is learning how the schemes behave.
+ * It names the knob that would change the outcome.
  */
 export function explainResult(r: DetectionResult): string {
   const { level } = verdictFor(r.zScore);
@@ -256,35 +257,35 @@ export function explainResult(r: DetectionResult): string {
   const pct = (x: number) => `${Math.round(x * 100)}%`;
 
   if (r.numScored < 8) {
-    return `Only ${r.numScored} tokens were scored — far too few for the z-test to mean anything. Generate a longer text.`;
+    return `Only ${r.numScored} tokens were scored. That is too few for the z-test. Generate a longer text.`;
   }
 
   if (level === 'strong') {
     const what = r.scheme === 'greenlist' ? `${pct(r.observedRate)} of tokens are green vs ${pct(r.expectedRate)} expected by chance` : `mean g-value ${r.observedRate.toFixed(3)} vs 0.5 by chance`;
-    return `${what}. Under the no-watermark hypothesis a z-score this large occurs with probability ${r.pValue < 1e-4 ? r.pValue.toExponential(1) : r.pValue.toFixed(4)}. Change the detector key or edit the text to watch the signal degrade.`;
+    return `${what}. Under the no-watermark hypothesis a z-score this large occurs with probability ${r.pValue < 1e-4 ? r.pValue.toExponential(1) : r.pValue.toFixed(4)}. Change the detector key. Or edit the text. Watch the signal drop.`;
   }
 
   if (level === 'weak') {
-    // z grows like √T: with a strong per-token signal but few tokens the test still can't
-    // reach 4 (24 all-green tokens at γ=0.8 give z ≈ 2.4). Say so before blaming the scheme.
+    // z grows like √T. A strong per-token signal with few tokens still cannot
+    // reach 4 (24 all-green tokens at γ=0.8 give z about 2.4). Say so before blaming the scheme.
     if (r.numScored < 40 && r.observedRate > r.expectedRate + 0.1) {
       const what = r.scheme === 'greenlist' ? `${pct(r.observedRate)} green (vs ${pct(r.expectedRate)} by chance)` : `mean g-value ${r.observedRate.toFixed(2)}`;
-      return `${what}, but only ${r.numScored} tokens were scored. The z-score grows with √T, so a short text cannot reach the z ≥ ${Z_DETECT} threshold however well it's watermarked. Generate a longer output (raise max tokens).`;
+      return `${what}, but only ${r.numScored} tokens were scored. The z-score grows with √T. A short text cannot reach z >= ${Z_DETECT} even when it is well watermarked. Generate a longer output. Raise max tokens.`;
     }
     const knob =
       mode === 'soft'
-        ? 'Longer outputs or a larger δ strengthen the signal; δ only tips low-confidence positions, so highly predictable text carries little watermark.'
+        ? 'Longer outputs or a larger δ strengthen the signal. δ only tips low-confidence positions. Highly predictable text carries little watermark.'
         : mode === 'tournament'
-          ? 'Longer outputs or more tournament layers (depth m) strengthen the signal; low-entropy text is hard to watermark by any scheme.'
+          ? 'Longer outputs or more tournament layers (depth m) strengthen the signal. Low-entropy text is hard to watermark by any scheme.'
           : mode === 'hard'
-            ? 'Hard mode normally gives a strong signal — a weak one means re-tokenisation drift or edits have desynchronised many positions. Try the oracle option (re-tokenise off).'
-            : 'Above chance, but this can happen ~2% of the time with un-watermarked text; nothing was embedded in mode None.';
-    return `Above chance, but below the paper's z ≥ ${Z_DETECT} threshold. ${knob}`;
+            ? 'Hard mode normally gives a strong signal. A weak one means tokenisation drift or edits broke many positions. Try the oracle option (re-tokenise off).'
+            : 'Above chance, but this can happen about 2% of the time with un-watermarked text. Nothing was embedded in mode None.';
+    return `Above chance, but below the paper's z >= ${Z_DETECT} threshold. ${knob}`;
   }
 
   // level === 'none'
   if (mode === 'none') {
-    return 'No watermark was embedded (mode None), so a z-score near zero is the expected control result: the detector sees the green-list rate a plain model produces by chance.';
+    return 'No watermark was embedded (mode None). A z-score near zero is the expected control result. The detector sees the green-list rate a plain model produces by chance.';
   }
-  return 'Consistent with un-watermarked text — or with the wrong detector key, mismatched γ/h/depth, or heavy editing. Check that the detector key matches the generation key.';
+  return 'This matches un-watermarked text, or a wrong detector key, or mismatched γ/h/depth, or heavy editing. Check that the detector key matches the generation key.';
 }

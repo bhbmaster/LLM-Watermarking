@@ -1,22 +1,22 @@
 /**
- * Left column: model picker, prompt, watermark mode and all tunable parameters.
+ * Left column: model picker, prompt, watermark mode, and all tunable parameters.
  *
- * This component is purely controlled — every value lives in `App` so that the
- * detector (right column) can read the same γ / h / mode settings. The panel is
- * organised top-to-bottom in the order a user needs things:
+ * This component is controlled. Every value lives in `App`.
+ * The detector (right column) can then read the same γ / h / mode settings.
  *
- *   1. Model      — which weights to run (opens the picker), plus load status
- *   2. Prompt     — the text, and whether it's a chat instruction or a continuation
- *   3. Mode       — None / Hard / Soft / Tournament (the scheme under study)
- *   4. Generation — sampling knobs shared by all modes (collapsed by default)
- *   5. Watermark  — scheme parameters; which ones are shown depends on the mode:
+ * Layout, top to bottom:
+ *   1. Model      - which weights to run (opens the picker), plus load status
+ *   2. Prompt     - the text, and whether it is a chat instruction or a continuation
+ *   3. Mode       - None / Hard / Soft / Tournament
+ *   4. Generation - sampling knobs shared by all modes (collapsed by default)
+ *   5. Watermark  - scheme parameters. Which fields show depends on the mode:
  *                     Hard        γ, h, key, forced-red words
  *                     Soft        γ, δ, h, key, forced-red words
  *                     Tournament  h, depth m, key
  *                     None        γ, h, key (still used by the detector as a control)
- *   6. Action     — Generate / Stop
+ *   6. Action     - Generate / Stop
  *
- * All the hover-help text lives in the HELP table below so it can be read in one place.
+ * Hover-help text lives in the HELP table below.
  */
 
 import type { LLM } from '../hooks/useLLM';
@@ -57,43 +57,43 @@ export interface ModelPanelProps {
   onStop: () => void;
 }
 
-/** Hover-help copy for every control, kept together so the explanations stay consistent. */
+/** Hover-help copy for every control. Keep the wording together so the tips stay consistent. */
 const HELP = {
   promptMode:
-    'Instruction: wraps your text in the chat template so the model answers it like an assistant. ' +
-    'Continuation: feeds the raw text and the model keeps writing where it stops (base-model style).',
+    'Instruction: wrap your text in the chat template. The model answers as an assistant. ' +
+    'Continuation: feed the raw text. The model keeps writing from that point.',
   mode:
-    'None = plain sampling (control). Hard = red-list tokens are forbidden. Soft = green-list logits get +δ. ' +
-    'Tournament = SynthID-style: sample candidates and let hash-keyed g-functions pick the winner.',
+    'None: plain sampling (control). Hard: red-list tokens are forbidden. Soft: green-list logits get +δ. ' +
+    'Tournament: sample candidates. Hash-keyed g-functions pick the winner (SynthID-style).',
   gamma:
-    'γ: fraction of the vocabulary that is "green" at each step (the rest is red). ' +
-    'Smaller γ = fewer allowed tokens = stronger signal per token but more distortion.',
+    'γ: fraction of the vocabulary that is green at each step. The rest is red. ' +
+    'A smaller γ allows fewer tokens. The per-token signal is stronger. Distortion is higher.',
   delta:
-    'δ: logit bonus added to green tokens in Soft mode. At confident positions δ changes nothing; ' +
-    'at uncertain positions it tips the choice toward green. 2–4 is typical.',
+    'δ: logit bonus added to green tokens in Soft mode. At confident positions δ changes nothing. ' +
+    'At uncertain positions it tips the choice toward green. Typical values are 2 to 4.',
   h:
-    'h: how many previous tokens are hashed with the key to pick this step\'s green list / g-functions. ' +
-    'Bigger h looks more random but a single edit then corrupts h following scores.',
-  key: 'Secret key. The green lists / g-functions are derived from it. Detect with the same key to see the watermark; with a different key you get z ≈ 0.',
+    'h: how many previous tokens are hashed with the key to pick this step\'s green list or g-functions. ' +
+    'A larger h looks more random. One edit then corrupts the next h scores.',
+  key: 'Secret key. The green lists and g-functions come from it. Detect with the same key to see the watermark. A different key gives z near 0.',
   depth:
-    'Tournament depth m: number of knock-out layers (2^m virtual candidates). More layers = stronger watermark. SynthID uses 30.',
+    'Tournament depth m: number of knock-out layers (2^m virtual candidates). More layers give a stronger watermark. SynthID uses 30.',
   forceRed:
-    'Playground aid: every token these words tokenise to is put on the red list at every step. ' +
-    'In Hard mode the model can\'t say them; in Soft mode it is discouraged. Try forcing an obvious answer word and watch it route around.',
-  temperature: 'Divides logits before softmax. <1 sharpens (less randomness, weaker watermark), >1 flattens.',
+    'Playground aid: put every token of these words on the red list at every step. ' +
+    'In Hard mode the model cannot emit them. In Soft mode they are discouraged. Force an obvious answer word and watch the model avoid it.',
+  temperature: 'Divides logits before softmax. Values below 1 sharpen the distribution. Values above 1 flatten it. A sharper distribution weakens the watermark.',
   topK: 'Keep only the k most likely tokens before sampling. 0 = off.',
-  topP: 'Nucleus sampling: keep the smallest set of tokens whose probabilities sum to ≥ p. 1 = off.',
+  topP: 'Nucleus sampling: keep the smallest set of tokens whose probabilities sum to at least p. 1 = off.',
   repetition: 'Penalise tokens already in the text (HF-style). 1 = off. Applied before the watermark.',
-  seed: 'Seed for the sampling RNG (NOT the watermark key). Fill in to make a run reproducible; blank = random.',
-  maxTokens: 'Maximum number of tokens to generate. Longer texts give the detector more evidence (z grows like √T).',
+  seed: 'Seed for the sampling RNG. This is not the watermark key. Fill it in to make a run reproducible. Leave it blank for a random run.',
+  maxTokens: 'Maximum number of tokens to generate. Longer texts give the detector more evidence. The z-score grows like √T.',
 };
 
 /**
  * The four schemes, in order of increasing subtlety:
- *   None       — control; plain sampling, nothing embedded.
- *   Hard       — Kirchenbauer "hard red list": red tokens get −∞ logits, never sampled.
- *   Soft       — Kirchenbauer "soft": green tokens get +δ; confident positions are left alone.
- *   Tournament — SynthID-Text: keyed g-functions run a knock-out among sampled candidates.
+ *   None       - control; plain sampling, nothing embedded.
+ *   Hard       - Kirchenbauer "hard red list": red tokens get -Infinity logits, never sampled.
+ *   Soft       - Kirchenbauer "soft": green tokens get +δ; confident positions are left alone.
+ *   Tournament - SynthID-Text: keyed g-functions run a knock-out among sampled candidates.
  */
 const MODE_OPTIONS: { value: WatermarkMode; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -104,9 +104,9 @@ const MODE_OPTIONS: { value: WatermarkMode; label: string }[] = [
 
 export function ModelPanel(p: ModelPanelProps) {
   const { llm, watermark: wm, generation: gen } = p;
-  // While loading or generating, structural controls (model, mode, prompt mode) are
-  // frozen so the run stays consistent with what's displayed. Sliders remain editable —
-  // they only matter for the *next* run.
+  // While loading or generating, freeze model, mode, and prompt mode.
+  // That keeps the run consistent with the display. Sliders stay editable.
+  // They only affect the next run.
   const busy = llm.status === 'loading' || llm.status === 'generating';
   // Immutable-update helpers: replace one field of the params object.
   const set = <K extends keyof WatermarkParams>(k: K, v: WatermarkParams[K]) => p.onWatermarkChange({ ...wm, [k]: v });
@@ -115,7 +115,7 @@ export function ModelPanel(p: ModelPanelProps) {
   return (
     <aside className="panel panel-left">
       {/* ── Model ── */}
-      <Field label="Model" help="Pick from a catalog filtered by what this machine can run, with a quality score (MMLU) and release date per model. Weights download once into the browser's Cache Storage (see 'Downloads go to' in the picker) and are reused across sessions.">        
+      <Field label="Model" help="Pick from a catalog filtered by what this machine can run. Each model has a quality score (MMLU) and a release date. Weights download once into the browser's Cache Storage. See 'Downloads go to' in the picker. They are reused across sessions.">        
         <ModelButton modelId={p.modelId} hardware={p.hardware} cached={p.cached} disabled={busy} onClick={p.onOpenPicker} />
       </Field>
       <StatusLine llm={llm} device={p.device} webgpuAvailable={p.webgpuAvailable} modelId={p.modelId} />
@@ -173,7 +173,7 @@ export function ModelPanel(p: ModelPanelProps) {
           {wm.mode === 'soft' && (
             <NumberField label="δ bias" help={HELP.delta} value={wm.delta} min={0} max={20} step={0.5} onChange={(v) => set('delta', v)} />
           )}
-          {/* h is shared by every scheme: it's the size of the hashed context window. */}
+          {/* h is shared by every scheme: it is the size of the hashed context window. */}
           <NumberField label="h context" help={HELP.h} value={wm.h} min={1} max={16} step={1} onChange={(v) => set('h', v)} />
           {/* m = tournament layers; the statistic averages over T·m g-values. */}
           {wm.mode === 'tournament' && (
@@ -196,17 +196,17 @@ export function ModelPanel(p: ModelPanelProps) {
               type="text"
               value={p.forceRedText}
               onChange={(e) => p.onForceRedTextChange(e.currentTarget.value)}
-              placeholder="e.g. Paris, lighthouse, fire"
+              placeholder="Example: Paris, lighthouse, fire"
               disabled={wm.mode === 'none'}
             />
           </Field>
         )}
       </Collapsible>
 
-      {/* ── Action ──
-          One button whose label tells the user what pressing it will cost:
-          "Download model & generate" (first use), "Load model & generate" (cached but not
-          in memory), "Generate" (ready). While generating it becomes Stop. */}
+      {/* Action button. The label shows the cost of the next click:
+          "Download model & generate" on first use.
+          "Load model & generate" when cached but not in memory.
+          "Generate" when ready. While generating, the button becomes Stop. */}
       {llm.status === 'generating' ? (
         <button type="button" className="btn btn-stop" onClick={p.onStop}>
           Stop
@@ -255,10 +255,10 @@ function ModelButton(props: { modelId: string; hardware: HardwareProfile | null;
 }
 
 /**
- * One-line status under the model button, plus the compute-backend badge and, while
- * loading, a progress bar fed by Transformers.js's download callbacks.
- * The message is derived from the worker status in priority order: error > loading >
- * generating > ready-for-this-model > ready-for-another-model > nothing loaded.
+ * One-line status under the model button, plus the compute-backend badge.
+ * While loading, a progress bar uses Transformers.js download callbacks.
+ * Message priority: error, loading, generating, ready for this model,
+ * ready for another model, nothing loaded.
  */
 function StatusLine({ llm, device, webgpuAvailable, modelId }: { llm: LLM; device: Device; webgpuAvailable: boolean; modelId: string }) {
   const loc = describeStorageLocation();
@@ -267,7 +267,7 @@ function StatusLine({ llm, device, webgpuAvailable, modelId }: { llm: LLM; devic
   else if (llm.status === 'loading') text = llm.progress?.text ?? 'Loading…';
   else if (llm.status === 'generating') text = 'Generating…';
   else if (llm.loaded && llm.loaded.modelId === modelId) text = 'Done. Try the detector.';
-  else if (llm.loaded) text = 'Different model loaded — press Generate to switch.';
+  else if (llm.loaded) text = 'Different model loaded. Press Generate to switch.';
   else text = 'Model not loaded. Weights download once and are cached by your browser.';
 
   return (

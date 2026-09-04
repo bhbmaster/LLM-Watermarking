@@ -1,28 +1,32 @@
 /**
- * Middle column: the generated text, rendered token-by-token.
+ * Middle column: the generated text, one chip per token.
  *
- * Each token is a small chip. Before detection the chips are neutral; after detection
- * they are coloured by the detector's per-token score:
+ * Before detection the chips are neutral. After detection the detector score sets colour:
  *
- *   red/green list  →  green chip = token was on the green list for its context,
- *                      red chip   = it was on the red list.
- *                      (Hard mode: every scored chip should be green. Soft mode: mostly
- *                      green, red where the model was confident enough to override δ.
- *                      Mode None: ~γ green, the chance rate.)
- *   tournament      →  red→green gradient by mean g-value (0.5 = no evidence), plus an
- *                      m-cell grid above the chip showing every layer's g_ℓ(x_t) — the
- *                      figure from the SynthID paper. Watermarked text: mostly green cells;
- *                      unwatermarked: a coin-flip mix. The detection statistic is simply
- *                      (green cells) / (all cells) over the scored tokens.
- *   dashed outline  →  not scored: the first h tokens (no context) or a repeated n-gram.
+ *   red/green list
+ *     green chip = token was on the green list for its context
+ *     red chip   = token was on the red list
+ *     Hard mode: every scored chip should be green
+ *     Soft mode: mostly green; red when the model overrides δ
+ *     Mode None: about γ green, the chance rate
  *
- * Hovering a chip shows the sampling trace recorded while it was generated (probability,
- * entropy, candidate count, which list it came from) plus the detector's score, so you
- * can compare "what the generator did" with "what the detector concluded" position by
- * position — the re-tokenisation mismatches become visible here.
+ *   tournament
+ *     red-to-green colour by mean g-value (0.5 = no evidence)
+ *     plus an m-cell grid of each layer g_ℓ(x_t)
+ *     That grid is the SynthID paper figure
+ *     Watermarked text: mostly green cells
+ *     Unwatermarked text: a mix near 0.5
+ *     The statistic is (green cells) / (all cells) over scored tokens
  *
- * "Edit text" swaps the chips for a plain textarea so you can paraphrase, delete or
- * insert words and re-run detection to see how robust the watermark is to edits.
+ *   dashed outline
+ *     not scored: the first h tokens, or a repeated n-gram
+ *
+ * Hover a chip to see the sampling trace and the detector score.
+ * Compare "what the generator did" with "what the detector concluded".
+ * A mismatch often means tokenisation drift.
+ *
+ * "Edit text" swaps the chips for a textarea.
+ * You can then change words and run detection again.
  */
 
 import type { CSSProperties } from 'react';
@@ -112,9 +116,9 @@ function TokenChip({ token, index, scheme }: { token: DisplayToken; index: numbe
   const title = describe(token, index);
 
   // Tokens can contain newlines ("\n\n" is a common single token). Show each one as a
-  // visible "↵" inside the chip, then emit real line breaks *after* the chip so the
-  // surrounding flow wraps like the text does (the <br>s must sit outside the inline-flex
-  // stack used for the grid, otherwise they would not break the outer line).
+  // visible "↵" inside the chip. Then emit real line breaks after the chip so the
+  // surrounding flow wraps like the text does. The <br>s must sit outside the inline-flex
+  // stack used for the grid. Otherwise they would not break the outer line.
   const parts = token.piece.split('\n');
   const newlines = parts.length - 1;
   const chip = (
@@ -150,10 +154,10 @@ function TokenChip({ token, index, scheme }: { token: DisplayToken; index: numbe
 }
 
 /**
- * The m g-values of one token as a small grid, green = 1, red = 0 — the same picture as
- * the SynthID paper's figure. Cells are laid out in ⌈√m⌉ columns (m = 30 → 6 × 5).
- * `dim` greys the grid for unscored tokens (repeats / no context) so the eye is drawn to
- * the cells that actually feed the statistic.
+ * The m g-values of one token as a small grid, green = 1, red = 0. Same picture as
+ * the SynthID paper's figure. Cells are laid out in ceil(sqrt(m)) columns (m = 30 -> 6 x 5).
+ * `dim` greys the grid for unscored tokens (repeats / no context). The eye is then
+ * drawn to the cells that actually feed the statistic.
  */
 function GGrid({ values, dim }: { values: (0 | 1)[]; dim: boolean }) {
   const cols = Math.ceil(Math.sqrt(values.length));
@@ -168,11 +172,11 @@ function GGrid({ values, dim }: { values: (0 | 1)[]; dim: boolean }) {
 
 /**
  * Map a detector score to chip colouring.
- *  - no score yet          → neutral
- *  - not scored            → dashed outline
- *  - green list            → binary green / red
- *  - tournament            → alpha-blended green (g > 0.5) or red (g < 0.5); the further
- *                            from 0.5, the more saturated. 0.5 itself is nearly transparent.
+ *  - no score yet          -> neutral
+ *  - not scored            -> dashed outline
+ *  - green list            -> binary green / red
+ *  - tournament            -> alpha-blended green (g > 0.5) or red (g < 0.5)
+ *                            Further from 0.5 is more saturated. 0.5 itself is nearly transparent.
  */
 function chipStyle(score: TokenScore | undefined, scheme: DetectionScheme): { className: string; style?: CSSProperties } {
   if (!score) return { className: '' };
@@ -190,8 +194,8 @@ function chipStyle(score: TokenScore | undefined, scheme: DetectionScheme): { cl
 
 /**
  * Text for the native hover tooltip: token identity, then the generation trace (if we
- * have it), then the detector's view. Seeing "sampled from GREEN list" next to a red
- * detector chip is the tell-tale sign of a tokenisation mismatch.
+ * have it), then the detector's view. "sampled from GREEN list" next to a red
+ * detector chip is the sign of a tokenisation mismatch.
  */
 function describe(t: DisplayToken, index: number): string {
   const lines = [`token #${index}  id=${t.id}  ${JSON.stringify(t.piece)}`];
@@ -204,7 +208,7 @@ function describe(t: DisplayToken, index: number): string {
     if (!t.score.scored) lines.push('detector: not scored (no context / repeated n-gram)');
     else lines.push(`detector score: ${t.score.score.toFixed(2)}`);
     if (t.score.gValues) {
-      // e.g. "g-values (18/30 green): 1101001110 1011100101 1101110010"
+      // for example "g-values (18/30 green): 1101001110 1011100101 1101110010"
       const ones = t.score.gValues.reduce<number>((a, b) => a + b, 0);
       const bits = t.score.gValues.join('').replace(/(.{10})/g, '$1 ').trim();
       lines.push(`g-values (${ones}/${t.score.gValues.length} green): ${bits}`);
@@ -233,10 +237,10 @@ function Legend({ scheme }: { scheme: DetectionScheme }) {
           </span>
           <span>grid = g-values per layer (green 1, red 0)</span>{' '}
           <span className="tok graded" style={{ background: 'rgba(34,197,94,.6)' }}>
-            mean g ≈ 1
+            mean g about 1
           </span>{' '}
           <span className="tok graded" style={{ background: 'rgba(239,68,68,.6)' }}>
-            mean g ≈ 0
+            mean g about 0
           </span>
         </>
       )}{' '}

@@ -1,5 +1,5 @@
 /**
- * LLM Watermarking Playground — program start.
+ * LLM Watermarking Playground - program start.
  *
  * This file only mounts the React app. Read the glossary first if you do not already
  * know how a language model writes text. Then follow the study guide below.

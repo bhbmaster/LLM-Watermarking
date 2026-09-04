@@ -11,9 +11,9 @@
  * playground. A production detector would use a keyed function such as HMAC.
  *
  * Three steps:
- *   1. `hashString`  — turn the key text into one 32-bit integer
- *   2. `hashContext` — mix in the previous token ids
- *   3. `mix32`       — scramble an integer so it looks uniform
+ *   1. `hashString`  - turn the key text into one 32-bit integer
+ *   2. `hashContext` - mix in the previous token ids
+ *   3. `mix32`       - scramble an integer so it looks uniform
  *
  * `>>> 0` keeps JavaScript numbers in unsigned 32-bit range. `Math.imul` multiplies
  * with 32-bit wraparound.
@@ -31,8 +31,8 @@ export function hashString(s: string): number {
 
 /**
  * "lowbias32" integer finalizer by Chris Wellons. It is a bijection on uint32 with
- * excellent avalanche: flipping one input bit flips ~half the output bits. We use
- * it everywhere we need "one more independent random number" from a seed.
+ * excellent avalanche: flipping one input bit flips about half the output bits. We use
+ * it everywhere we need one more independent random number from a seed.
  */
 export function mix32(x: number): number {
   x >>>= 0;
@@ -51,8 +51,8 @@ const GOLDEN = 0x9e3779b9;
  * Seed for position t: combines the key with the previous `h` token ids.
  *
  * The fold is order-sensitive (each step scrambles before the next token is
- * XOR-ed in), so context [A, B] and [B, A] give different seeds. The paper's
- * simplest variant hashes only the previous token (h=1); SynthID hashes h=4.
+ * XOR-ed in). Context [A, B] and [B, A] give different seeds. The paper's
+ * simplest variant hashes only the previous token (h=1). SynthID hashes h=4.
  *
  * @param keyHash  output of `hashString(key)`
  * @param context  the h token ids immediately before the position being scored
@@ -69,11 +69,11 @@ export function hashContext(keyHash: number, context: ArrayLike<number>): number
 /**
  * Derive a pseudo-random uint32 for a (seed, token) pair. This is the function the
  * green list and the tournament g-values are read from. `salt` lets callers derive
- * *independent* streams from the same seed (SynthID uses one per tournament layer).
+ * independent streams from the same seed. SynthID uses one per tournament layer.
  */
 export function hashToken(seed: number, tokenId: number, salt = 0): number {
   // Multiplying the token id by an odd constant spreads consecutive ids across the
-  // whole 32-bit range before mixing, so nearby ids don't produce correlated hashes.
+  // whole 32-bit range before mixing, so nearby ids do not produce correlated hashes.
   const t = Math.imul(tokenId + 1, GOLDEN) >>> 0;
   return mix32((seed ^ t ^ Math.imul(salt + 1, 0x85ebca6b)) >>> 0);
 }
@@ -84,9 +84,9 @@ export function toUnit(h: number): number {
 }
 
 /**
- * Small deterministic PRNG (mulberry32) used for the *sampling* randomness when the
- * user asks for a reproducible run. Note this is unrelated to the watermark key: the
- * key decides which tokens are favoured; this RNG decides which of them we draw.
+ * Small deterministic PRNG (mulberry32) used for the sampling randomness when the
+ * user asks for a reproducible run. This is unrelated to the watermark key.
+ * The key decides which tokens are favoured. This RNG decides which of them we draw.
  */
 export function makeRng(seedText: string): () => number {
   let a = seedText ? hashString(seedText) : (Math.random() * 4294967296) >>> 0;

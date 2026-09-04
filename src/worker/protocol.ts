@@ -11,7 +11,7 @@ import type { GenerationParams, PromptMode, WatermarkParams } from '../watermark
 import type { StepTrace } from '../watermark/processor';
 import type { Dtype } from '../models/catalog';
 
-/** Compute backend. WebGPU is ~10-50× faster; WASM is the fallback for old browsers. */
+/** Compute backend. WebGPU is about 10-50 times faster. WASM is the fallback for old browsers. */
 export type Device = 'webgpu' | 'wasm';
 
 /** Everything that identifies one loaded model session. */
@@ -27,7 +27,7 @@ export interface LoadTarget {
 export type ToWorker =
   /** Download if needed and build the session. No requestId: at most one load at a time. */
   | ({ type: 'load' } & LoadTarget)
-  /** Run one generation. `requestId` ties the streamed `token`s and the final `done` to the caller. */
+  /** Run one generation. `requestId` ties the streamed tokens and the final `done` to the caller. */
   | {
       type: 'generate';
       requestId: number;
@@ -44,9 +44,9 @@ export type ToWorker =
 // ───────────────────────────── worker → UI ─────────────────────────────
 
 export interface LoadProgress {
-  /** Overall 0–100 across all files, when known. */
+  /** Overall 0-100 across all files, when known. */
   percent: number | null;
-  /** Human readable status line, e.g. "Downloading model_q4f16.onnx_data (1.2 / 2.1 GB)". */
+  /** Human readable status line, for example "Downloading model_q4f16.onnx_data (1.2 / 2.1 GB)". */
   text: string;
 }
 
@@ -55,9 +55,9 @@ export type FromWorker =
   | { type: 'progress'; progress: LoadProgress }
   /** Model is in memory and warmed up; echoes what was loaded. */
   | ({ type: 'ready' } & LoadTarget)
-  /** Something threw. With `requestId` it fails that request; without, it fails the load. */
+  /** Something threw. With `requestId` it fails that request. Without, it fails the load. */
   | { type: 'error'; message: string; requestId?: number }
-  /** One generated token. `piece` is the token decoded on its own (may be a partial character). */
+  /** One generated token. `piece` is the token decoded on its own. It may be a partial character. */
   | { type: 'token'; requestId: number; tokenId: number; piece: string; trace: StepTrace }
   /** Generation finished (EOS, max tokens or stop). */
   | {

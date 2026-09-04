@@ -1,20 +1,21 @@
 /**
- * Inspect and manage the models Transformers.js has downloaded into the browser.
+ * Inspect and manage models that Transformers.js downloaded into the browser.
  *
- * Transformers.js stores every fetched file in the Cache Storage API under the cache
- * named `transformers-cache` (see `env.cacheKey`), keyed by the full download URL:
+ * Transformers.js stores each fetched file in the Cache Storage API.
+ * The cache name is `transformers-cache` (`env.cacheKey`).
+ * Each key is the full download URL:
  *
  *     https://huggingface.co/<org>/<repo>/resolve/main/onnx/model_q4f16.onnx_data
  *
- * That lets us group cached entries by repo id, add up their sizes, and delete a model to
- * reclaim disk space — the browser has no UI of its own for this.
+ * This file groups those entries by repo id, sums their sizes, and deletes a model.
+ * The browser has no UI of its own for this.
  */
 
 /** Cache Storage name Transformers.js uses (`env.cacheKey`). */
 export const CACHE_NAME = 'transformers-cache';
 const URL_RE = /^https:\/\/huggingface\.co\/([^/]+\/[^/]+)\/resolve\//;
 
-/** Prefix of every cached file URL for a repo — what you'd look up in DevTools. */
+/** Prefix of every cached file URL for a repo - what you would look up in DevTools. */
 export function cacheUrlPrefix(id: string): string {
   return `https://huggingface.co/${id}/resolve/`;
 }
@@ -24,7 +25,7 @@ export interface CachedModel {
   files: number;
   /** Sum of Content-Length headers; 0 if the browser dropped them. */
   bytes: number;
-  /** Which quantised weight files are present (e.g. ["q4f16"]). */
+  /** Which quantised weight files are present. Example: ["q4f16"]. */
   dtypes: string[];
 }
 
@@ -54,16 +55,16 @@ export async function listCachedModels(): Promise<CachedModel[]> {
 }
 
 /**
- * Where those cached bytes physically live, for the "where is it downloaded to?" line
- * in the picker. Browsers don't expose this, so it's inferred from the user agent; the
- * folder contents are hashed blobs (`index`, `xxxx_0`, …) managed by the browser — not
- * files you can open with ONNX Runtime. To see them in the browser instead: DevTools →
- * Application → Cache Storage → `transformers-cache`.
+ * Where those cached bytes live on disk. The picker shows this path.
+ * Browsers do not expose the path. This code infers it from the user agent.
+ * The folder holds hashed blobs (`index`, `xxxx_0`, ...) that the browser manages.
+ * You cannot open those blobs with ONNX Runtime.
+ * In the browser, open DevTools -> Application -> Cache Storage -> `transformers-cache`.
  */
 export interface StorageLocation {
-  /** Browser family we think we're in. */
+  /** Browser family we think we are in. */
   browser: string;
-  /** Best-guess on-disk path, or null when the browser doesn't use a fixed one. */
+  /** Best-guess on-disk path, or null when the browser does not use a fixed one. */
   path: string | null;
 }
 
@@ -77,7 +78,7 @@ export function describeStorageLocation(): StorageLocation {
 
   // Order matters: Edge and Electron UAs also contain "Chrome".
   if (/Electron/i.test(ua)) {
-    // Embedded Chromium (e.g. the browser inside Cursor / VS Code): a per-app partition.
+    // Embedded Chromium (for example, the browser inside Cursor / VS Code): a per-app partition.
     return { browser: 'Embedded Chromium (Electron app)', path: isMac ? '~/Library/Application Support/<App>/Partitions/<partition>/Service Worker/CacheStorage/' : isWin ? '%APPDATA%\\<App>\\Partitions\\<partition>\\Service Worker\\CacheStorage\\' : '~/.config/<App>/Partitions/<partition>/Service Worker/CacheStorage/' };
   }
   if (/Edg\//i.test(ua)) {
