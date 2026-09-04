@@ -4,7 +4,8 @@
  *   theme          - colour tokens; green/red are the watermark colours used everywhere
  *   layout         - header, three-column grid, panels
  *   text utilities - .muted / .small / .row helpers
- *   form controls  - fields, inputs, segmented control, collapsible, help tooltip, badges
+ *   form controls  - fields, inputs, segmented control, collapsible, help bubble, badges
+ *   tooltip        - .tip, rendered into <body> by controls.tsx so nothing can clip it
  *   buttons        - primary (generate), stop, secondary, ghost
  *   status         - load status line + progress bar
  *   output         - the token chips (.tok.green / .tok.red / .graded / .unscored)
@@ -33,6 +34,11 @@
   --accent: #3b82f6; /* focus rings and hover outlines */
   --radius: 12px;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Stacking order, highest last. Keep every z-index in the app on this scale so the
+     order is decided here and not by whichever rule happens to be read last.
+     Tooltips sit above the modal: the model picker has help bubbles of its own. */
+  --z-modal: 100;
+  --z-tooltip: 1000;
   color-scheme: dark;
 }
 
@@ -84,8 +90,12 @@ body {
 }
 
 @media (max-width: 1000px) {
+  /* `1fr` alone means `minmax(auto, 1fr)`, and `auto` as a minimum is the item's
+     min-content width. A panel whose header row will not wrap therefore pushes the
+     column wider than the screen and the whole page scrolls sideways. `minmax(0, 1fr)`
+     lets the column shrink; the wrapping rules below let the content reflow into it. */
   .columns {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -104,6 +114,9 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  /* The Output header carries a colour legend, a throughput line and a button. On a
+     narrow screen they wrap onto further lines instead of widening the panel. */
+  flex-wrap: wrap;
 }
 
 .panel h2 {
@@ -136,6 +149,7 @@ body {
 }
 .row.gap {
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 /* ─────────────────────────── form controls ─────────────────────────── */
@@ -198,6 +212,10 @@ textarea {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+  /* Labels wrap at different heights in these narrow columns ("temperature ?" needs two
+     lines where "top-k ?" needs one). Bottom-align the cells so the inputs still line up
+     across the row instead of sitting at three different heights. */
+  align-items: end;
 }
 
 .checkbox {
@@ -241,11 +259,13 @@ textarea {
 }
 
 /* collapsible */
-/* Collapsible section ("▶ Generation parameters"): header button + optional body. */
+/* Collapsible section ("▶ Generation parameters"): header button + optional body.
+   No `overflow: hidden` here. Nothing inside paints to the edges, so it clipped only
+   the focus ring of the header button — and, before the tips moved to a portal, every
+   tooltip raised from inside the section. Leave the overflow visible. */
 .collapsible {
   border: 1px solid var(--border);
   border-radius: 10px;
-  overflow: hidden;
 }
 
 .collapsible-header {
@@ -275,7 +295,7 @@ textarea {
 }
 
 /* help bubble */
-/* "?" help bubble. The tooltip is pure CSS: text comes from data-tip via ::after. */
+/* "?" help bubble. It is focusable, so the tip is reachable by keyboard too. */
 .help {
   display: inline-flex;
   align-items: center;
@@ -288,19 +308,31 @@ textarea {
   font-size: 10px;
   font-weight: 700;
   cursor: help;
-  position: relative;
   flex: none;
 }
 
-/* Tooltip body, centred above the bubble, fades in on hover. max-width keeps long hints readable. */
-.help::after {
-  content: attr(data-tip);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: 280px;
+.help:hover,
+.help:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.help:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ─────────────────────────── tooltip ─────────────────────────── */
+/* Tooltip body.
+   The element is a child of <body>, put there by a portal (see controls.tsx -> Help),
+   and `top` / `left` are written by that component in window coordinates. Being outside
+   the panels is the point: no border, collapsible or modal can clip it, and the clamp
+   in Help keeps it inside the window, so it cannot add a horizontal scrollbar either.
+   Fonts are stated in full because <body>, not a panel, is the parent now. */
+.tip {
+  position: fixed;
+  z-index: var(--z-tooltip);
+  max-width: min(280px, calc(100vw - 16px));
   background: #23282f;
   color: var(--text);
   border: 1px solid var(--border);
@@ -311,14 +343,14 @@ textarea {
   line-height: 1.4;
   white-space: normal;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.12s;
-  z-index: 10;
+  pointer-events: none; /* never swallow a click meant for the control underneath */
+  animation: tip-in 0.12s ease-out;
 }
 
-.help:hover::after {
-  opacity: 1;
+@keyframes tip-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /* buttons */
@@ -533,6 +565,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  flex-wrap: wrap;
   font-family: var(--mono);
 }
 .legend-inline .tok {
@@ -590,7 +623,7 @@ textarea {
   align-items: flex-start;
   justify-content: center;
   padding: 40px 16px;
-  z-index: 100;
+  z-index: var(--z-modal);
   overflow-y: auto;
 }
 .modal {
@@ -630,7 +663,9 @@ textarea {
 }
 .hw-grid {
   display: grid;
-  grid-template-columns: auto 1fr;
+  /* minmax(0, …) so the long cache path in the value column wraps instead of
+     stretching the dialog. */
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 4px 14px;
   margin: 0;
   font-size: 12px;

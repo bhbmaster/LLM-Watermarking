@@ -89,6 +89,11 @@
  * STUDY GUIDE: where to read
  * ════════════════════════════════════════════════════════════════════════════════════
  *
+ * The entry point is index.html, which loads this file, which mounts src/App.tsx.
+ * App.tsx owns every piece of state; everything else is a prop or a pure function.
+ * The README section "Where to start reading the code" walks the same path and traces
+ * the two call chains below, from the button click down to the maths.
+ *
  *  src/watermark/hash.ts        turn the key + previous tokens into a reproducible seed
  *  src/watermark/sampling.ts    temperature, top-k, top-p, and the random draw
  *  src/watermark/greenlist.ts   hard and soft red/green lists
