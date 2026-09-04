@@ -1,0 +1,21 @@
+<!doctype html>
+<!--
+  This is the only HTML page. The empty #root div is where React draws the app.
+  Vite (the build tool) starts at src/main.tsx and, for a production build, rewrites
+  the script tag below to a packed file in dist/.
+
+  The page is a static site. There is no app server. The language-model files download
+  from Hugging Face into the browser cache when you press Generate. See src/main.tsx
+  for a glossary if you are new to language models.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LLM Watermarking Playground</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

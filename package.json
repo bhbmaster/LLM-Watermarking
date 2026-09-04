@@ -1,0 +1,26 @@
+{
+  "name": "llm-watermarking-playground",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "In-browser playground for LLM text watermarking (red/green lists and SynthID-style tournament sampling) running on WebGPU via Transformers.js.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.1.0",
+    "@webgpu/types": "^0.1.72",
+    "typescript": "^5.9.0",
+    "vite": "^8.2.0"
+  }
+}

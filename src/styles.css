@@ -1,0 +1,843 @@
+/*
+ * Single stylesheet for the playground. Plain CSS, no framework, organised top-down:
+ *
+ *   theme          — colour tokens; green/red are the watermark colours used everywhere
+ *   layout         — header, three-column grid, panels
+ *   text utilities — .muted / .small / .row helpers
+ *   form controls  — fields, inputs, segmented control, collapsible, help tooltip, badges
+ *   buttons        — primary (generate), stop, secondary, ghost
+ *   status         — load status line + progress bar
+ *   output         — the token chips (.tok.green / .tok.red / .graded / .unscored)
+ *   model picker   — modal, hardware summary, model rows
+ *   detection      — result card, stats table, rate bar
+ *
+ * Class names are referenced from the .tsx files; the chip colour classes in particular
+ * are set in OutputPanel.tsx → chipStyle().
+ */
+
+/* ─────────────────────────── theme ─────────────────────────── */
+:root {
+  --bg: #0b0d10;
+  --panel: #14171c;
+  --panel-2: #1a1e25;
+  --border: #262b33;
+  --text: #e6e8eb;
+  --muted: #8b93a1;
+  /* Watermark colours: green = on the green list / high g, red = red list / low g.
+     The -dim variants are the chip backgrounds; the full colours are for text and bars. */
+  --green: #22c55e;
+  --green-dim: rgba(34, 197, 94, 0.25);
+  --red: #ef4444;
+  --red-dim: rgba(239, 68, 68, 0.25);
+  --amber: #f59e0b; /* "weak" verdicts, warnings, tight fits */
+  --accent: #3b82f6; /* focus rings and hover outlines */
+  --radius: 12px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: radial-gradient(1200px 400px at 20% -10%, rgba(34, 197, 94, 0.08), transparent 60%),
+    radial-gradient(900px 400px at 90% -10%, rgba(239, 68, 68, 0.08), transparent 60%), var(--bg);
+  color: var(--text);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  min-height: 100vh;
+}
+
+/* ─────────────────────────── layout ─────────────────────────── */
+.app {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+}
+
+.app-header h1 {
+  margin: 0 0 4px;
+  font-size: 34px;
+  letter-spacing: -0.5px;
+}
+
+.app-header p {
+  margin: 0 0 20px;
+  max-width: 900px;
+}
+
+.gradient {
+  background: linear-gradient(90deg, var(--green), #eab308 55%, var(--red));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Three columns: controls | output (takes the slack) | detection. Stack below 1000px. */
+.columns {
+  display: grid;
+  grid-template-columns: minmax(300px, 340px) minmax(360px, 1fr) minmax(240px, 300px);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.panel h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.app-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+
+/* ─────────────────────────── text utilities ─────────────────────────── */
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 12px;
+}
+.warn {
+  color: var(--amber);
+}
+.error-text {
+  color: var(--red);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.row.gap {
+  gap: 12px;
+}
+
+/* ─────────────────────────── form controls ─────────────────────────── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 5px;
+}
+
+.field-label .muted {
+  font-weight: 400;
+}
+
+input[type='text'],
+input[type='number'],
+select,
+textarea {
+  width: 100%;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font: inherit;
+  outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.5;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.key-input {
+  font-family: var(--mono);
+  max-width: 220px;
+}
+
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+/* segmented control */
+/* Segmented control (prompt mode, watermark mode): a bordered pill row, active item filled. */
+.segmented {
+  display: inline-flex;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.segmented button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  padding: 5px 11px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.segmented button.active {
+  background: #2a3039;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.segmented button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* collapsible */
+/* Collapsible section ("▶ Generation parameters"): header button + optional body. */
+.collapsible {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.collapsible-header {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+
+.collapsible .chevron {
+  font-size: 9px;
+  margin-right: 4px;
+  color: var(--muted);
+}
+
+.collapsible-body {
+  padding: 4px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* help bubble */
+/* "?" help bubble. The tooltip is pure CSS: text comes from data-tip via ::after. */
+.help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1px solid var(--muted);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: help;
+  position: relative;
+  flex: none;
+}
+
+/* Tooltip body, centred above the bubble, fades in on hover. max-width keeps long hints readable. */
+.help::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 280px;
+  background: #23282f;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  white-space: normal;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+  z-index: 10;
+}
+
+.help:hover::after {
+  opacity: 1;
+}
+
+/* buttons */
+/* ─────────────────────────── buttons ─────────────────────────── */
+/* Base button; variants below only change colours. */
+.btn {
+  border: 0;
+  border-radius: 9px;
+  padding: 10px 14px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.12s;
+}
+.btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* Generate: green like the green list. */
+.btn-primary {
+  background: var(--green);
+  color: #052e16;
+}
+/* Stop: red, swapped in for Generate while streaming. */
+.btn-stop {
+  background: var(--red);
+  color: #fff;
+}
+.btn-secondary {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 4px 9px;
+}
+
+/* badges */
+/* Pills: WebGPU/WASM backend, fit levels, downloaded/loaded. Colour via .badge-<tone>. */
+.badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid;
+}
+.badge-green {
+  color: var(--green);
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.1);
+}
+.badge-amber {
+  color: var(--amber);
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.1);
+}
+.badge-neutral {
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+/* status / progress */
+/* ─────────────────────────── status ─────────────────────────── */
+/* Status line under the model button, with the download progress bar while loading. */
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.progress {
+  height: 6px;
+  background: var(--panel-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: var(--green);
+  transition: width 0.2s;
+}
+
+/* ─────────────────────────── output ─────────────────────────── */
+.panel-output {
+  min-height: 360px;
+}
+
+/* Token chip container: monospace, generous line-height so chips don't collide, pre-wrap so
+   spaces inside tokens are preserved (a leading space is part of most BPE tokens). */
+.output-tokens {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 2;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  min-height: 280px;
+}
+
+/* Edit mode: same text as a plain textarea. */
+.output-editor {
+  font-family: var(--mono);
+  font-size: 13px;
+  min-height: 280px;
+}
+
+/* One token chip. Colour classes are applied after detection (OutputPanel → chipStyle). */
+.tok {
+  display: inline;
+  border-radius: 4px;
+  padding: 2px 1px;
+  margin: 0 1px;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: default;
+}
+.tok:hover {
+  outline: 1px solid var(--accent);
+}
+/* Green list / red list (binary schemes). */
+.tok.green {
+  background: var(--green-dim);
+}
+.tok.red {
+  background: var(--red-dim);
+}
+/* First h tokens and de-duplicated repeats: dashed, no colour. */
+.tok.unscored {
+  background: transparent;
+  outline: 1px dashed var(--border);
+  color: var(--muted);
+}
+/* Tournament mode: g-value grid stacked above its chip (SynthID-paper style).
+   inline-flex keeps the pair flowing with the text; the chip stays a normal .tok. */
+.tok-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  vertical-align: bottom;
+  margin: 2px 1px 0;
+}
+.tok-stack .tok {
+  margin: 0;
+}
+/* m cells in ⌈√m⌉ columns; each cell 3px with 1px gaps → 6×5 for m = 30 is 23×19px. */
+.ggrid {
+  display: inline-grid;
+  grid-auto-rows: 3px;
+  gap: 1px;
+  padding: 2px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.ggrid span {
+  display: block;
+  width: 3px;
+  height: 3px;
+  border-radius: 0.5px;
+}
+.ggrid .g1 {
+  background: var(--green);
+}
+.ggrid .g0 {
+  background: var(--red);
+}
+/* Unscored tokens (repeats / no context) get a faded grid so they don't compete. */
+.ggrid.dim {
+  opacity: 0.3;
+}
+.legend-inline .ggrid {
+  vertical-align: middle;
+}
+
+/* The visible "↵" marker for newlines inside a token. */
+.tok .nl {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.caret {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background: var(--green);
+  vertical-align: text-bottom;
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* Colour key in the Output header (chips reuse the .tok colours). */
+.legend-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--mono);
+}
+.legend-inline .tok {
+  padding: 1px 5px;
+  font-size: 11px;
+}
+.legend {
+  margin: 8px 0 0;
+}
+
+/* ─────────────────────────── model picker ─────────────────────────── */
+.model-button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.model-button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.model-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.model-button-main {
+  overflow: hidden;
+  min-width: 0;
+}
+.model-button-meta {
+  white-space: nowrap;
+}
+.model-where {
+  line-height: 1.4;
+  word-break: break-word;
+}
+.model-where code {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  z-index: 100;
+  overflow-y: auto;
+}
+.modal {
+  width: min(860px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-header h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.hw {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+.hw-title {
+  font-weight: 600;
+  font-size: 12px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.hw-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 12px;
+}
+.hw-grid dt {
+  color: var(--muted);
+}
+/* "Downloads go to" row: prose on one line, the on-disk path on its own line below. */
+.hw-grid dd.hw-location {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.hw-grid dd.hw-location code {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.hw-path {
+  color: var(--muted);
+  word-break: break-all;
+}
+
+/* Per-model quality (★ from MMLU) + release month line in the picker. */
+.model-meta {
+  gap: 8px;
+  align-items: baseline;
+}
+.stars {
+  color: #f5b301;
+  letter-spacing: 1px;
+  font-size: 12px;
+}
+.stars-off {
+  color: rgba(255, 255, 255, 0.18);
+}
+
+.hw-grid dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.model-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.model-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+}
+.model-row.selected {
+  border-color: rgba(34, 197, 94, 0.5);
+}
+.model-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.model-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fit-badge {
+  cursor: help;
+}
+.model-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.btn.small {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.mono {
+  font-family: var(--mono);
+}
+
+/* ─────────────────────────── detection ─────────────────────────── */
+/* Result card; border colour follows the verdict level (strong / weak / none). */
+.result {
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 12px;
+  background: var(--panel-2);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.result-strong {
+  border-color: rgba(34, 197, 94, 0.5);
+}
+.result-weak {
+  border-color: rgba(245, 158, 11, 0.5);
+}
+.result-none {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+/* Verdict on the left, "confidence 98.3%" stacked on the right. */
+.verdict-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.verdict {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.3;
+}
+.confidence {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: none;
+  line-height: 1.3;
+}
+.confidence strong {
+  font-size: 15px;
+  font-family: var(--mono);
+}
+/* Lowercase labels rendered as small caps, as in the reference design. */
+.stats dt {
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+/* z-score highlighted in the verdict colour. */
+.z {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.z-strong {
+  background: var(--green-dim);
+  color: var(--green);
+}
+.z-weak {
+  background: rgba(245, 158, 11, 0.18);
+  color: var(--amber);
+}
+.explain {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.result-strong .verdict {
+  color: var(--green);
+}
+.result-weak .verdict {
+  color: var(--amber);
+}
+.result-none .verdict {
+  color: var(--muted);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+.stats dt {
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.stats dd {
+  margin: 0;
+  font-family: var(--mono);
+}
+
+.ratebar {
+  position: relative;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: visible;
+}
+.ratebar-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 999px;
+}
+.ratebar-marker {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 14px;
+  background: var(--text);
+  transform: translateX(-1px);
+}
