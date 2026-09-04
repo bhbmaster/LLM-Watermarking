@@ -14,7 +14,9 @@
  *  - `q4`     4-bit weights, fp32 math. Larger. Use when the GPU has no fp16.
  *
  * Instruction-tuned models have a chat template. "Instruction" mode wraps your
- * prompt as a user message. Qwen3 also accepts `enable_thinking: false`. Others ignore it.
+ * prompt as a user message. Qwen3 and Qwen3.5 accept `enable_thinking: false`. Others ignore it.
+ * Only decoder-only text ONNX is listed. Multimodal exports (vision encoder + decoder)
+ * do not load through `AutoModelForCausalLM` in this app.
  *
  * `mmlu` is a published quiz score (higher is stronger). `released` is the weight date.
  */
@@ -62,13 +64,40 @@ export function formatReleased(iso: string): string {
 export const CATALOG: ModelSpec[] = [
   // ── tiny: runs almost anywhere, including CPU/WASM ──
   {
+    id: 'onnx-community/Falcon-H1-Tiny-90M-Instruct-ONNX',
+    name: 'Falcon H1 Tiny 90M',
+    params: '90M',
+    sizeGB: { q4f16: 0.09, q4: 0.13 },
+    blurb: 'TII Falcon H1 Tiny. Smallest 2026 option; quality is basic, good for watching the watermark.',
+    released: '2026-01-17',
+    mmlu: { score: 27.3 },
+  },
+  {
+    id: 'onnx-community/Falcon-H1-Tiny-Multilingual-100M-Instruct-ONNX',
+    name: 'Falcon H1 Tiny 100M',
+    params: '100M',
+    sizeGB: { q4f16: 0.11, q4: 0.14 },
+    blurb: 'TII Falcon H1 Tiny, multilingual 100M instruct.',
+    released: '2026-02-07',
+    mmlu: { score: 26, approx: true },
+  },
+  {
     id: 'HuggingFaceTB/SmolLM2-135M-Instruct',
     name: 'SmolLM2 135M',
     params: '135M',
     sizeGB: { q4f16: 0.12, q4: 0.18 },
-    blurb: 'Smallest option. Fine for watching the algorithms work; text quality is basic.',
+    blurb: 'Small English chat model. Fine for watching the algorithms work.',
     released: '2024-10-31',
     mmlu: { score: 30, approx: true },
+  },
+  {
+    id: 'onnx-community/LFM2.5-350M-ONNX',
+    name: 'LFM2.5 350M',
+    params: '350M',
+    sizeGB: { q4f16: 0.24, q4: 0.27 },
+    blurb: 'Liquid AI LFM2.5. Same Lfm2 causal-LM path as LFM2, with a 2026 weight drop.',
+    released: '2026-03-31',
+    mmlu: { score: 44, approx: true },
   },
   {
     id: 'onnx-community/LFM2-350M-ONNX',
@@ -78,6 +107,15 @@ export const CATALOG: ModelSpec[] = [
     blurb: 'Liquid AI hybrid model; fast and surprisingly coherent for its size.',
     released: '2025-07-10',
     mmlu: { score: 43.4 },
+  },
+  {
+    id: 'onnx-community/granite-4.0-350m-ONNX-web',
+    name: 'Granite 4.0 350M',
+    params: '350M',
+    sizeGB: { q4f16: 0.33, q4: 0.54 },
+    blurb: 'IBM Granite 4.0 Nano, exported for the web. Compact instruct model.',
+    released: '2025-10-28',
+    mmlu: { score: 32, approx: true },
   },
   {
     id: 'HuggingFaceTB/SmolLM2-360M-Instruct',
@@ -105,6 +143,24 @@ export const CATALOG: ModelSpec[] = [
     blurb: 'Compact multilingual chat model.',
     released: '2024-09-19',
     mmlu: { score: 47.5 },
+  },
+  {
+    id: 'onnx-community/Qwen3.5-0.8B-Text-ONNX',
+    name: 'Qwen3.5 0.8B',
+    params: '0.8B',
+    sizeGB: { q4f16: 0.44, q4: 0.51 },
+    blurb: 'Qwen3.5 text-only ONNX (Feb 2026). Not the multimodal Qwen3.5 export.',
+    released: '2026-02-16',
+    mmlu: { score: 48.5, approx: true },
+  },
+  {
+    id: 'onnx-community/Apertus-v1.1-0.5B-Instruct-ONNX',
+    name: 'Apertus v1.1 0.5B',
+    params: '0.5B',
+    sizeGB: { q4f16: 0.48, q4: 0.76 },
+    blurb: 'Swiss Apertus Mini, distilled from the 8B teacher. Smallest Apertus v1.1.',
+    released: '2026-06-18',
+    mmlu: { score: 25.8 },
   },
 
   // ── small: comfortable on any laptop with WebGPU ──
@@ -134,6 +190,24 @@ export const CATALOG: ModelSpec[] = [
     blurb: 'Liquid AI hybrid model; efficient on modest GPUs.',
     released: '2025-07-10',
     mmlu: { score: 55.2 },
+  },
+  {
+    id: 'onnx-community/granite-4.0-1b-ONNX-web',
+    name: 'Granite 4.0 1B',
+    params: '1B',
+    sizeGB: { q4f16: 1.16, q4: 1.66 },
+    blurb: 'IBM Granite 4.0 Nano 1B, exported for the web.',
+    released: '2025-10-28',
+    mmlu: { score: 42, approx: true },
+  },
+  {
+    id: 'onnx-community/Apertus-v1.1-1.5B-Instruct-ONNX',
+    name: 'Apertus v1.1 1.5B',
+    params: '1.5B',
+    sizeGB: { q4f16: 1.16, q4: 1.72 },
+    blurb: 'Swiss Apertus Mini 1.5B instruct. Distilled from Apertus 8B.',
+    released: '2026-06-18',
+    mmlu: { score: 37.7 },
   },
   {
     id: 'onnx-community/Llama-3.2-1B-Instruct-ONNX',
@@ -218,8 +292,26 @@ export const CATALOG: ModelSpec[] = [
     released: '2025-04-29',
     mmlu: { score: 73.0 },
   },
+  {
+    id: 'onnx-community/Apertus-v1.1-4B-Instruct-ONNX',
+    name: 'Apertus v1.1 4B',
+    params: '4B',
+    sizeGB: { q4f16: 2.56, q4: 3.49 },
+    blurb: 'Swiss Apertus Mini 4B instruct. Strongest of the 2026 Apertus distilled sizes.',
+    released: '2026-06-18',
+    mmlu: { score: 50.4 },
+  },
 
   // ── large: 16 GB+ unified memory or a big discrete GPU ──
+  {
+    id: 'onnx-community/Olmo-3-7B-Instruct-ONNX',
+    name: 'OLMo 3 7B',
+    params: '7B',
+    sizeGB: { q4f16: 3.55, q4: 3.67 },
+    blurb: 'Allen Institute OLMo 3 instruct. Needs plenty of GPU memory.',
+    released: '2025-11-20',
+    mmlu: { score: 69.1, approx: true },
+  },
   {
     id: 'onnx-community/Apertus-8B-Instruct-2509-ONNX',
     name: 'Apertus 8B',
